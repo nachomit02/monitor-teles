@@ -1,0 +1,67 @@
+name: Monitor de teles
+
+on:
+  schedule:
+    - cron: "17 * * * *"   # cada hora (minuto 17, para esquivar la hora en punto que GitHub atrasa)
+  workflow_dispatch:         # botón "Run workflow" para correrlo a mano
+
+permissions:
+  contents: write            # para guardar state.json entre corridas
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+jobs:
+  revisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Armar secrets.json desde los secretos de GitHub
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_SECRET: ${{ secrets.ML_SECRET }}
+          ML_REFRESH: ${{ secrets.ML_REFRESH }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          json.dump({"token": os.environ["TELEGRAM_TOKEN"], "chat_id": os.environ["TELEGRAM_CHAT_ID"],
+                     "ml_client_id": os.environ["ML_CLIENT_ID"], "ml_secret": os.environ["ML_SECRET"],
+                     "ml_refresh": os.environ["ML_REFRESH"]}, open("secrets.json", "w"))
+          EOF
+
+      - name: Revisar tiendas
+        run: python monitor.py
+
+      - name: Guardar el nuevo permiso de Mercado Libre
+        # Mercado Libre entrega un refresh token nuevo cada vez que se renueva el acceso
+        if: always()
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          ML_REFRESH_ANTERIOR: ${{ secrets.ML_REFRESH }}
+          REPO: ${{ github.repository }}
+        run: python nube.py guardar-refresh
+
+      - name: Guardar estado
+        if: always()
+        run: |
+          git config user.name "monitor-bot"
+          git config user.email "monitor-bot@users.noreply.github.com"
+          git add state.json
+          git diff --cached --quiet || git commit -m "estado $(date -u +%Y-%m-%dT%H:%M)"
+          git push
