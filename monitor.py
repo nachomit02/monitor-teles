@@ -127,10 +127,16 @@ def extraer_precio(texto, precio_max):
     return min(precios) if precios else None
 
 
+def bloqueada(page):
+    # login forzado (Mercado Libre) o rechazo del CDN (Frávega desde servidores fuera de Argentina)
+    return ("account-verification" in page.url or "/login" in page.url
+            or "request could not be satisfied" in page.title().lower())
+
+
 def revisar_pagina(page, url, producto):
     page.goto(url, wait_until="domcontentloaded", timeout=60000)
     page.wait_for_timeout(6000)
-    if "account-verification" in page.url or "/login" in page.url:
+    if bloqueada(page):
         return {"estado": "bloqueado", "precio": None}
 
     r = page.evaluate(JS_BLOQUE, [SIN_STOCK, CON_STOCK])
@@ -157,6 +163,8 @@ def revisar_pagina(page, url, producto):
 def links_de_busqueda(page, url, codigo):
     page.goto(url, wait_until="domcontentloaded", timeout=60000)
     page.wait_for_timeout(6000)
+    if bloqueada(page):
+        return None
     links = page.eval_on_selector_all(
         "a[href]", "els => els.map(e => [e.href, e.innerText || ''])")
     cod = normalizar(codigo)
@@ -347,13 +355,15 @@ def main(dry_run=False, con_resumen=False):
                 except Exception as e:
                     log(f"ERROR búsqueda {busq}: {e}")
                     continue
-                urls += [u for u in encontrados if u not in urls]
-                if not encontrados:
-                    # el buscador no tiene el modelo: lo mostramos en el resumen como "no publicado"
-                    log(f"{prod['nombre']} | {tienda_de(busq)} (buscador) | no_publicado")
-                    estado_nuevo[busq] = {"estado": "no_publicado", "precio": None, "producto": prod["nombre"],
-                                          "visto": f"{datetime.now():%Y-%m-%d %H:%M}"}
-                    revisadas.append(busq)
+                if encontrados:
+                    urls += [u for u in encontrados if u not in urls]
+                    continue
+                # el buscador no tiene el modelo ("no publicado") o la tienda rechazó el acceso
+                estado = "bloqueado" if encontrados is None else "no_publicado"
+                log(f"{prod['nombre']} | {tienda_de(busq)} (buscador) | {estado}")
+                estado_nuevo[busq] = {"estado": estado, "precio": None, "producto": prod["nombre"],
+                                      "visto": f"{datetime.now():%Y-%m-%d %H:%M}"}
+                revisadas.append(busq)
 
             # tiendas VTEX: ya traen estado y precio, no hace falta abrir la página
             ya_revisadas = {}
