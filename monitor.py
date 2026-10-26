@@ -137,6 +137,7 @@ def revisar_pagina(page, url, producto):
     titulo, bloque = r["titulo"], r["bloque"].lower()
     # si la tienda redirige a la home o a otro producto, el título no tiene el código del modelo
     if normalizar(producto["codigo"]) not in normalizar(titulo + page.title()):
+        log(f"  no_existe: terminó en {page.url[:120]} | título '{page.title()[:80]}' | h1 '{titulo[:80]}'")
         return {"estado": "no_existe", "precio": None, "titulo": titulo[:120]}
 
     # "no disponible" manda sobre el botón de compra: varias tiendas lo muestran igual
@@ -166,6 +167,8 @@ def links_de_busqueda(page, url, codigo):
             href = href.split("?")[0]
             if href not in encontrados:
                 encontrados.append(href)
+    if not encontrados:
+        log(f"  buscador sin coincidencias: {len(links)} links, título '{page.title()[:80]}'")
     return encontrados[:5]
 
 
