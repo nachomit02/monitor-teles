@@ -429,7 +429,7 @@ def main(dry_run=False, con_resumen=False):
                     if u in urls_config or v.get("estado") != "bloqueado"}
     bloqueados = [u for u, v in estado_nuevo.items() if v.get("estado") == "bloqueado" and u in urls_config]
     if bloqueados:
-        log(f"{len(bloqueados)} páginas de Mercado Libre bloqueadas: corré 'python monitor.py --login'")
+        log(f"{len(bloqueados)} páginas bloqueadas por la tienda (ej: Frávega desde servidores fuera de Argentina)")
 
     if dry_run:
         print("\n--- Avisos que se mandarían ---\n" + ("\n\n".join(avisos) or "(ninguno)"))
