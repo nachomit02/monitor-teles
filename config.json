@@ -45,5 +45,7 @@
       ]
     }
   ],
-  "avisar_aunque_supere_precio_max": true
+  "avisar_aunque_supere_precio_max": true,
+  "tiendas_bloqueadas_conocidas": ["Fravega"],
+  "grafico": "https://nachomit02.github.io/monitor-teles/"
 }
