@@ -8,12 +8,14 @@ Uso:
   python monitor.py --test          manda un mensaje de prueba a Telegram
   python monitor.py --mercadolibre APP_ID   conecta la API oficial de Mercado Libre
 """
+import csv
+import html
 import json
 import re
 import sys
 import urllib.parse
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -22,8 +24,12 @@ BASE = Path(__file__).resolve().parent
 CONFIG = BASE / "config.json"
 SECRETS = BASE / "secrets.json"
 STATE = BASE / "state.json"
+HISTORIAL = BASE / "historial.csv"
+SALUD = BASE / "salud.json"
 LOG = BASE / "monitor.log"
 PROFILE = BASE / "perfil_navegador"
+ART = timezone(timedelta(hours=-3))  # Argentina no tiene horario de verano; la nube corre en UTC
+FALLAS_PARA_AVISAR = 3  # corridas seguidas con error antes de avisar que una tienda se rompió
 
 SIN_STOCK = ["sin stock", "agotado", "no disponible", "no está disponible", "no se encuentra disponible",
              "no hay stock", "publicación pausada", "te avisaremos cuando", "avisame cuando"]
@@ -54,8 +60,12 @@ NO_PRECIO_RE = re.compile(
     re.I)
 
 
+def ahora():
+    return datetime.now(ART).replace(tzinfo=None)
+
+
 def log(msg):
-    linea = f"{datetime.now():%Y-%m-%d %H:%M:%S} {msg}"
+    linea = f"{ahora():%Y-%m-%d %H:%M:%S} {msg}"
     print(linea)
     with LOG.open("a", encoding="utf-8") as f:
         f.write(linea + "\n")
@@ -319,13 +329,84 @@ def fmt(precio):
     return f"${precio:,.0f}".replace(",", ".") if precio else "precio no detectado"
 
 
+# ---------------------------------------------------------------- Historial de precios
+
+def leer_historial():
+    if not HISTORIAL.exists():
+        return []
+    with HISTORIAL.open(encoding="utf-8", newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def anotar_historial(filas):
+    nuevo = not HISTORIAL.exists()
+    with HISTORIAL.open("a", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        if nuevo:
+            w.writerow(["fecha", "producto", "tienda", "precio", "url"])
+        w.writerows(filas)
+
+
+def dia(fecha):
+    return f"{fecha[8:10]}/{fecha[5:7]}"
+
+
+def contexto_precio(historial, producto, tienda, precio):
+    """Compara con los últimos 30 días: detecta 'ofertas' que en realidad subieron antes de bajar."""
+    if precio is None:
+        return ""
+    desde = f"{ahora() - timedelta(days=30):%Y-%m-%d %H:%M}"
+    hace_una_semana = f"{ahora() - timedelta(days=7):%Y-%m-%d %H:%M}"
+    previos = [h for h in historial if h["producto"] == producto and h["fecha"] >= desde]
+    if not previos:
+        return ""
+    lineas = []
+    minimo = min(previos, key=lambda h: int(h["precio"]))
+    if precio <= int(minimo["precio"]):
+        lineas.append(f"🏆 el más barato que registré desde el {dia(previos[0]['fecha'])}")
+    else:
+        lineas.append(f"📊 no es el mínimo: el {dia(minimo['fecha'])} estaba a {fmt(int(minimo['precio']))} "
+                      f"en {minimo['tienda']}")
+    misma_tienda = [h for h in previos if h["tienda"] == tienda and h["fecha"] < hace_una_semana]
+    if misma_tienda:
+        antes = min(misma_tienda, key=lambda h: int(h["precio"]))
+        if precio > int(antes["precio"]):
+            if antes["tienda"] == minimo["tienda"] and antes["precio"] == minimo["precio"]:
+                lineas = []  # misma info que la línea del mínimo
+            lineas.append(f"⚠️ ojo: en {tienda} estaba a {fmt(int(antes['precio']))} el {dia(antes['fecha'])}, "
+                          "la 'oferta' es más cara que eso")
+    return "\n" + "\n".join(lineas)
+
+
+# ---------------------------------------------------------------- Salud del monitor
+
+def actualizar_salud(salud_corrida):
+    """Cuenta fallas seguidas por tienda; avisa una vez cuando se rompe y otra cuando vuelve a andar."""
+    salud = leer_json(SALUD, {})
+    avisos = []
+    for tienda, motivo in salud_corrida.items():
+        s = salud.setdefault(tienda, {"fallas": 0, "avisado": False})
+        if motivo is None:
+            if s["avisado"]:
+                avisos.append(f"✅ {tienda} volvió a andar.")
+            s.update(fallas=0, avisado=False, motivo=None)
+            continue
+        s["fallas"] += 1
+        s["motivo"] = motivo[:200]
+        if s["fallas"] >= FALLAS_PARA_AVISAR and not s["avisado"]:
+            s["avisado"] = True
+            avisos.append(f"🔧 <b>{tienda}</b> falló {s['fallas']} veces seguidas.\n"
+                          f"Motivo: {html.escape(motivo[:200])}")
+    return salud, avisos
+
+
 ICONOS = {"disponible": "🟢", "sin_stock": "🔴", "no_publicado": "⚪", "no_existe": "⚫", "bloqueado": "🚫",
           "desconocido": "❔"}
 
 
 def resumen(estado):
     """Mensaje con el estado de todas las páginas revisadas, agrupado por producto."""
-    lineas = [f"📋 <b>Resumen {datetime.now():%d/%m %H:%M}</b>"]
+    lineas = [f"📋 <b>Resumen {ahora():%d/%m %H:%M}</b>"]
     por_producto = {}
     for url, v in estado.items():
         por_producto.setdefault(v.get("producto", "?"), []).append((url, v))
@@ -341,8 +422,28 @@ def main(dry_run=False, con_resumen=False):
     config = leer_json(CONFIG, {})
     estado_previo = leer_json(STATE, {})
     estado_nuevo = dict(estado_previo)
+    historial = leer_historial()
+    filas_historial = []
     avisos = []
     revisadas = []
+    visto = f"{ahora():%Y-%m-%d %H:%M}"
+    # tienda -> None si anduvo en esta corrida, o el motivo de la falla
+    salud_corrida = {}
+    conocidas = set(config.get("tiendas_bloqueadas_conocidas", []))
+
+    def anotar(tienda, motivo=None):
+        if motivo is None:
+            salud_corrida[tienda] = None
+        else:
+            salud_corrida.setdefault(tienda, motivo)  # si ya anduvo con otra página, cuenta como que anda
+
+    try:
+        ml_activo = bool(ml_token())
+    except SystemExit as e:
+        ml_activo = False
+        log(f"ERROR Mercado Libre: {e}")
+        anotar("Mercadolibre", f"{e}\nHay que reconectarlo: en tu PC corré "
+                               f"'python monitor.py --mercadolibre APP_ID' y después 'python nube.py publicar'")
 
     with sync_playwright() as p:
         ctx = abrir_navegador(p)
@@ -354,15 +455,21 @@ def main(dry_run=False, con_resumen=False):
                     encontrados = links_de_busqueda(page, busq, prod["codigo"])
                 except Exception as e:
                     log(f"ERROR búsqueda {busq}: {e}")
+                    anotar(tienda_de(busq), f"error en el buscador: {str(e)[:150]}")
                     continue
                 if encontrados:
+                    anotar(tienda_de(busq))
                     urls += [u for u in encontrados if u not in urls]
                     continue
                 # el buscador no tiene el modelo ("no publicado") o la tienda rechazó el acceso
                 estado = "bloqueado" if encontrados is None else "no_publicado"
+                if estado == "bloqueado" and tienda_de(busq) not in conocidas:
+                    anotar(tienda_de(busq), "la tienda bloquea el acceso")
+                elif estado == "no_publicado":
+                    anotar(tienda_de(busq))
                 log(f"{prod['nombre']} | {tienda_de(busq)} (buscador) | {estado}")
                 estado_nuevo[busq] = {"estado": estado, "precio": None, "producto": prod["nombre"],
-                                      "visto": f"{datetime.now():%Y-%m-%d %H:%M}"}
+                                      "visto": visto}
                 revisadas.append(busq)
 
             # tiendas VTEX: ya traen estado y precio, no hace falta abrir la página
@@ -372,19 +479,21 @@ def main(dry_run=False, con_resumen=False):
                     encontrados = buscar_vtex(tienda, prod["codigo"])
                 except Exception as e:
                     log(f"ERROR catálogo {tienda}: {e}")
+                    anotar(tienda_de(tienda), f"error en el catálogo: {str(e)[:150]}")
                     continue
+                anotar(tienda_de(tienda))
                 if not encontrados:
                     log(f"{prod['nombre']} | {tienda_de(tienda)} (catálogo) | no_publicado")
                     estado_nuevo[tienda + "#" + prod["codigo"]] = {
                         "estado": "no_publicado", "precio": None, "producto": prod["nombre"],
-                        "visto": f"{datetime.now():%Y-%m-%d %H:%M}"}
+                        "visto": visto}
                     revisadas.append(tienda + "#" + prod["codigo"])
                 for res in encontrados:
                     ya_revisadas[res["url"]] = res
                     if res["url"] not in urls:
                         urls.append(res["url"])
 
-            if ml_token():
+            if ml_activo:
                 try:
                     for res in buscar_mercadolibre(prod):
                         ya_revisadas[res["url"]] = res
@@ -392,21 +501,32 @@ def main(dry_run=False, con_resumen=False):
                             urls.append(res["url"])
                 except Exception as e:
                     log(f"ERROR Mercado Libre: {str(e)[:150]}")
+                    anotar("Mercadolibre", f"error en la API: {str(e)[:150]}")
 
             for url in urls:
+                tienda = tienda_de(url)
                 try:
                     r = ya_revisadas.get(url) or revisar_pagina(page, url, prod)
                 except Exception as e:
                     log(f"ERROR {url}: {str(e)[:150]}")
+                    anotar(tienda, f"no cargó la página: {str(e)[:150]}")
                     continue
-                tienda = tienda_de(url)
+                if r["estado"] in ("no_existe", "desconocido"):
+                    anotar(tienda, f"no reconozco la página (quedó '{r['estado']}'), quizás la cambiaron: {url}")
+                elif r["estado"] == "bloqueado":
+                    if tienda not in conocidas:
+                        anotar(tienda, "la tienda bloquea el acceso")
+                else:
+                    anotar(tienda)
                 log(f"{prod['nombre']} | {tienda} | {r['estado']} | {fmt(r['precio'])}")
                 revisadas.append(url)
                 previo = estado_previo.get(url, {})
-                estado_nuevo[url] = {**r, "producto": prod["nombre"], "visto": f"{datetime.now():%Y-%m-%d %H:%M}"}
+                estado_nuevo[url] = {**r, "producto": prod["nombre"], "visto": visto}
 
                 if r["estado"] != "disponible":
                     continue
+                if r["precio"]:
+                    filas_historial.append([visto, prod["nombre"], tienda, r["precio"], url])
                 barato = r["precio"] is not None and r["precio"] <= prod["precio_max"]
                 if not barato and not config.get("avisar_aunque_supere_precio_max", True):
                     continue
@@ -420,8 +540,12 @@ def main(dry_run=False, con_resumen=False):
                         marca = "✅ debajo de tu tope"
                     else:
                         marca = f"⚠️ arriba de tu tope ({fmt(prod['precio_max'])})"
-                    avisos.append(f"{motivo}: <b>{prod['nombre']}</b>\n{tienda}: {fmt(r['precio'])} {marca}\n{url}")
+                    contexto = contexto_precio(historial, prod["nombre"], tienda, r["precio"])
+                    grafico = f"\n📈 {config['grafico']}" if config.get("grafico") else ""
+                    avisos.append(f"{motivo}: <b>{prod['nombre']}</b>\n{tienda}: {fmt(r['precio'])} {marca}"
+                                  f"{contexto}\n{url}{grafico}")
         ctx.close()
+    salud, avisos_salud = actualizar_salud(salud_corrida)
 
     urls_config = {u for prod in config["productos"] for u in prod.get("paginas", [])}
     # limpia páginas que ya no están en config.json (ej: Mercado Libre)
@@ -432,13 +556,16 @@ def main(dry_run=False, con_resumen=False):
         log(f"{len(bloqueados)} páginas bloqueadas por la tienda (ej: Frávega desde servidores fuera de Argentina)")
 
     if dry_run:
-        print("\n--- Avisos que se mandarían ---\n" + ("\n\n".join(avisos) or "(ninguno)"))
+        print("\n--- Avisos que se mandarían ---\n" + ("\n\n".join(avisos + avisos_salud) or "(ninguno)"))
+        print("\n--- Salud de esta corrida ---\n" + json.dumps(salud_corrida, ensure_ascii=False, indent=2))
         return
+    anotar_historial(filas_historial)
+    guardar_json(SALUD, salud)
     if avisos and not leer_json(SECRETS, {}).get("chat_id"):
         # sin Telegram no guardamos el estado, para no perder el aviso
         log("Hay avisos pero Telegram no está configurado: corré 'python monitor.py --telegram'")
         return
-    for a in avisos:
+    for a in avisos + avisos_salud:
         enviar_telegram(a)
     if con_resumen:
         enviar_telegram(resumen({u: v for u, v in estado_nuevo.items() if u in revisadas}))
