@@ -42,23 +42,27 @@ jobs:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_SECRET: ${{ secrets.ML_SECRET }}
           ML_REFRESH: ${{ secrets.ML_REFRESH }}
+          VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE }}
+          PUSH_SUBS: ${{ secrets.PUSH_SUBS }}
         run: |
           python - <<'EOF'
           import json, os
           json.dump({"token": os.environ["TELEGRAM_TOKEN"], "chat_id": os.environ["TELEGRAM_CHAT_ID"],
                      "ml_client_id": os.environ["ML_CLIENT_ID"], "ml_secret": os.environ["ML_SECRET"],
-                     "ml_refresh": os.environ["ML_REFRESH"]}, open("secrets.json", "w"))
+                     "ml_refresh": os.environ["ML_REFRESH"], "vapid_private": os.environ["VAPID_PRIVATE"],
+                     "push_subs": json.loads(os.environ["PUSH_SUBS"] or "[]")}, open("secrets.json", "w"))
           EOF
 
       - name: Revisar tiendas
         run: python monitor.py
 
-      - name: Guardar el nuevo permiso de Mercado Libre
+      - name: Guardar el nuevo permiso de Mercado Libre y los celulares para avisos
         # Mercado Libre entrega un refresh token nuevo cada vez que se renueva el acceso
         if: always()
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
           ML_REFRESH_ANTERIOR: ${{ secrets.ML_REFRESH }}
+          PUSH_SUBS_ANTERIOR: ${{ secrets.PUSH_SUBS }}
           REPO: ${{ github.repository }}
         run: python nube.py guardar-refresh
 
