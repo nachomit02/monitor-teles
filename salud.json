@@ -33,5 +33,10 @@
     "fallas": 0,
     "avisado": false,
     "motivo": null
+  },
+  "Naldo": {
+    "fallas": 0,
+    "avisado": false,
+    "motivo": null
   }
 }
