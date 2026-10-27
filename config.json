@@ -3,12 +3,16 @@
     {
       "nombre": "LG OLED B5 55\"",
       "codigo": "OLED55B5",
-      "ml_productos": ["MLA61764485"],
+      "ml_productos": [
+        "MLA61764485"
+      ],
       "precio_max": 2150000,
       "paginas": [
         "https://tiendanewsan.com.ar/smart-tv-lg-oled-55-pulgadas-ultra-hd-4k-ai-thin-oled55b5psa-webos.html"
       ],
-      "vtex": ["https://www.cetrogar.com.ar"],
+      "vtex": [
+        "https://www.cetrogar.com.ar"
+      ],
       "busquedas": [
         "https://www.fravega.com/l/?keyword=oled55b5psa",
         "https://casadelaudio.com/catalogsearch/result/?q=oled55b5psa"
@@ -23,7 +27,9 @@
         "https://www.fravega.com/p/smart-tv-mini-led-4k-uhd-55-tcl-55c6k-f-503079/",
         "https://www.fravega.com/p/televisor-tcl-55-55c6k-mini-led-qled-4k-uhd-google-tv-990299426/"
       ],
-      "vtex": ["https://www.cetrogar.com.ar"],
+      "vtex": [
+        "https://www.cetrogar.com.ar"
+      ],
       "busquedas": [
         "https://www.fravega.com/l/?keyword=55c6k",
         "https://casadelaudio.com/catalogsearch/result/?q=55c6k"
@@ -32,13 +38,17 @@
     {
       "nombre": "TCL C755 55\" Mini LED",
       "codigo": "55C755",
-      "ml_productos": ["MLA37493226"],
+      "ml_productos": [
+        "MLA37493226"
+      ],
       "precio_max": 1300000,
       "paginas": [
         "https://www.coppel.com.ar/smart-mini-led-qled-tv-4k-55--tcl-55c755-f--------243809/p",
         "https://www.coopehogar.coop/producto/smart-tv-55%22-tcl-mini-led-ultra-hd-4k-55c755/614100"
       ],
-      "vtex": ["https://www.cetrogar.com.ar"],
+      "vtex": [
+        "https://www.cetrogar.com.ar"
+      ],
       "busquedas": [
         "https://www.fravega.com/l/?keyword=55c755",
         "https://casadelaudio.com/catalogsearch/result/?q=55c755"
@@ -46,6 +56,9 @@
     }
   ],
   "avisar_aunque_supere_precio_max": true,
-  "tiendas_bloqueadas_conocidas": ["Fravega"],
-  "grafico": "https://nachomit02.github.io/monitor-teles/"
+  "tiendas_bloqueadas_conocidas": [
+    "Fravega"
+  ],
+  "grafico": "https://nachomit02.github.io/monitor-teles/",
+  "vapid_publica": "BJ2WrRurX405QqJOG6CUSC6k4FytEVCtxdt_2nNpuKOVxiNs9ERFdG0pCA1p46YCByDtlewG0Hx3Vr2tBBc7nTw"
 }
