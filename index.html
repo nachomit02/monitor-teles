@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor de teles</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #6a737d; --line: #e3e6ea;
+    --ok: #1a7f37; --bad: #cf222e; --warn: #9a6700;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1216; --card: #171b21; --text: #e6e9ed; --muted: #8b949e; --line: #2a3038;
+            --ok: #3fb950; --bad: #f85149; --warn: #d29922; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+          padding: 18px; margin-bottom: 18px; }
+  .card h2 { font-size: 17px; margin: 0 0 2px; }
+  .meta { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .meta b { color: var(--text); }
+  .tiendas { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 13px;
+          text-decoration: none; color: var(--text); white-space: nowrap; }
+  .chip.disponible { border-color: var(--ok); }
+  .chip .p { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .grafico { position: relative; height: 260px; }
+  .vacio { color: var(--muted); font-size: 13px; padding: 30px 0; text-align: center; }
+  .error { color: var(--bad); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Monitor de teles</h1>
+  <p class="sub" id="sub">Cargando…</p>
+  <div id="productos"></div>
+</main>
+<script>
+const RAW = "https://raw.githubusercontent.com/nachomit02/monitor-teles/main/";
+const COLORES = ["#2f6fdf", "#e0702a", "#1f9e6e", "#b0399b", "#c49a1c", "#5b5fc7", "#d23f4b", "#2aa0b8"];
+const ICONOS = {disponible: "🟢", sin_stock: "🔴", no_publicado: "⚪", no_existe: "⚫", bloqueado: "🚫", desconocido: "❔"};
+
+const fmt = n => "$" + Math.round(n).toLocaleString("es-AR");
+const tiendaDe = url => {
+  const host = new URL(url.split("#")[0]).hostname.replace("www.", "");
+  const t = host.split(".")[0];
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+function parseCSV(texto) {
+  const filas = []; let fila = [], campo = "", comillas = false;
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (comillas) {
+      if (c === '"' && texto[i + 1] === '"') { campo += '"'; i++; }
+      else if (c === '"') comillas = false;
+      else campo += c;
+    } else if (c === '"') comillas = true;
+    else if (c === ",") { fila.push(campo); campo = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && texto[i + 1] === "\n") i++;
+      fila.push(campo); filas.push(fila); fila = []; campo = "";
+    } else campo += c;
+  }
+  if (campo || fila.length) { fila.push(campo); filas.push(fila); }
+  const [cab, ...resto] = filas;
+  return resto.filter(f => f.length === cab.length).map(f => Object.fromEntries(cab.map((k, i) => [k, f[i]])));
+}
+
+const aFecha = s => new Date(s.replace(" ", "T") + ":00-03:00").getTime();
+
+async function traer(archivo, tipo) {
+  const r = await fetch(RAW + archivo + "?t=" + Date.now());
+  if (!r.ok) return tipo === "json" ? {} : "";
+  return tipo === "json" ? r.json() : r.text();
+}
+
+async function main() {
+  const [config, estado, csv] = await Promise.all([traer("config.json", "json"), traer("state.json", "json"),
+                                                    traer("historial.csv", "text")]);
+  const historial = csv ? parseCSV(csv) : [];
+  const hace30 = Date.now() - 30 * 864e5;
+  const vistos = Object.values(estado).map(v => v.visto).filter(Boolean).sort();
+  document.getElementById("sub").textContent =
+    (vistos.length ? "Última revisión: " + vistos.at(-1) + " · " : "") +
+    "Precios con stock de los últimos 30 días. Se actualiza solo cada hora.";
+
+  const cont = document.getElementById("productos");
+  for (const prod of config.productos || []) {
+    const filas = historial.filter(h => h.producto === prod.nombre && aFecha(h.fecha) >= hace30);
+    const actuales = Object.entries(estado).filter(([, v]) => v.producto === prod.nombre);
+    const minimo = filas.reduce((m, h) => (!m || +h.precio < +m.precio ? h : m), null);
+
+    const card = document.createElement("section");
+    card.className = "card";
+    card.innerHTML = `
+      <h2>${esc(prod.nombre)}</h2>
+      <div class="meta">Tope: <b>${fmt(prod.precio_max)}</b>
+        ${minimo ? ` · Mínimo registrado: <b>${fmt(minimo.precio)}</b> en ${esc(minimo.tienda)} (${minimo.fecha.slice(8, 10)}/${minimo.fecha.slice(5, 7)})` : ""}</div>
+      <div class="tiendas">${actuales.map(([url, v]) => `
+        <a class="chip ${v.estado}" href="${esc(url.split("#")[0])}" target="_blank" rel="noopener">
+          ${ICONOS[v.estado] || "❔"} ${esc(tiendaDe(url))}${v.precio ? ` <span class="p">${fmt(v.precio)}</span>` : ""}</a>`).join("")}
+      </div>
+      <div class="grafico">${filas.length ? "<canvas></canvas>" : '<div class="vacio">Todavía no hay precios registrados con stock.</div>'}</div>`;
+    cont.appendChild(card);
+    if (!filas.length) continue;
+
+    const porTienda = {};
+    for (const h of filas) (porTienda[h.tienda] ||= []).push({x: aFecha(h.fecha), y: +h.precio});
+    const xs = filas.map(h => aFecha(h.fecha));
+    const datasets = Object.entries(porTienda).map(([t, puntos], i) => ({
+      label: t, data: puntos, borderColor: COLORES[i % COLORES.length], backgroundColor: COLORES[i % COLORES.length],
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, stepped: true, spanGaps: 3 * 3600e3}));
+    datasets.push({label: "Tope", data: [{x: Math.min(...xs), y: prod.precio_max}, {x: Math.max(...xs), y: prod.precio_max}],
+                   borderColor: "#888", borderDash: [6, 4], borderWidth: 1, pointRadius: 0});
+    const css = getComputedStyle(document.documentElement);
+    new Chart(card.querySelector("canvas"), {
+      type: "line", data: {datasets},
+      options: {
+        maintainAspectRatio: false, interaction: {mode: "nearest", intersect: false},
+        scales: {
+          x: {type: "linear", ticks: {color: css.getPropertyValue("--muted"), maxTicksLimit: 6,
+              callback: v => new Date(v).toLocaleDateString("es-AR", {day: "2-digit", month: "2-digit"})},
+              grid: {color: css.getPropertyValue("--line")}},
+          y: {ticks: {color: css.getPropertyValue("--muted"), callback: v => fmt(v)},
+              grid: {color: css.getPropertyValue("--line")}}},
+        plugins: {
+          legend: {labels: {color: css.getPropertyValue("--text"), boxWidth: 12}},
+          tooltip: {callbacks: {
+            title: items => new Date(items[0].parsed.x).toLocaleString("es-AR", {dateStyle: "short", timeStyle: "short"}),
+            label: it => `${it.dataset.label}: ${fmt(it.parsed.y)}`}}}}});
+  }
+}
+main().catch(e => { document.getElementById("sub").innerHTML = '<span class="error">No pude cargar los datos: ' + esc(e.message) + "</span>"; });
+</script>
+</body>
+</html>
