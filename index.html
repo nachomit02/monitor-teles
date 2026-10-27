@@ -106,10 +106,17 @@
   .tv.on .led { background: var(--positive-night); }
 
   /* ---------- Presentación */
-  .statement { padding: clamp(96px, 14vw, 180px) 0; text-align: center; }
+  .statement { padding: clamp(96px, 14vw, 180px) var(--gutter); text-align: center; }
   .statement p { font-family: var(--serif); font-style: italic; font-size: clamp(24px, 2.6vw, 34px); line-height: 1.3;
                  max-width: 30ch; margin: 0 auto; text-wrap: balance; }
-  .statement .link { margin-top: 32px; }
+  .statement-links { display: flex; justify-content: center; gap: 28px; flex-wrap: wrap; margin-top: 32px; }
+  button.link { font-family: var(--sans); color: inherit; background: none; border: 0; cursor: pointer; }
+  .avisos { max-width: 520px; margin: 32px auto 0; color: var(--muted); font-size: 15px; }
+  .avisos p { margin: 0 0 14px; font: inherit; font-style: normal; max-width: none; }
+  .avisos b { color: var(--ink); font-weight: 500; }
+  .avisos textarea { display: block; width: 100%; max-width: 100%; height: 76px; resize: none; font: 12px/1.4 ui-monospace, Consolas, monospace; color: var(--muted);
+                     background: var(--surface); border: 1px solid var(--line); padding: 10px; word-break: break-all; }
+  .avisos .acciones { display: flex; justify-content: center; gap: 24px; margin-top: 12px; flex-wrap: wrap; }
 
   /* ---------- Capítulos */
   .chapter { padding-bottom: clamp(96px, 12vw, 176px); }
@@ -249,7 +256,11 @@
 
   <section class="statement wrap" aria-label="Cómo funciona">
     <p id="statement" data-reveal>Reviso las tiendas cada hora y te escribo por Telegram apenas una de estas teles vuelve a tener stock o baja de precio.</p>
-    <a class="link" href="https://t.me/MonitorAvisosBot" target="_blank" rel="noopener" data-reveal style="--i:1">Abrir el bot de Telegram</a>
+    <div class="statement-links" data-reveal style="--i:1">
+      <a class="link" href="https://t.me/MonitorAvisosBot" target="_blank" rel="noopener">Abrir el bot de Telegram</a>
+      <button class="link" type="button" id="activar" hidden>Activar avisos en este celular</button>
+    </div>
+    <div class="avisos" id="avisos" aria-live="polite" hidden></div>
   </section>
 
   <div id="teles"></div>
@@ -548,8 +559,85 @@ async function cargar() {
   });
   revelar(document);
 
+  prepararAvisos(config.vapid_publica);
+
   $("#stamp").innerHTML = `Última revisión ${ddmm(ultima)} a las ${hhmm(ultima)}. <button type="button" id="refrescar">Actualizar</button>`;
   $("#refrescar").addEventListener("click", iniciar);
+}
+
+/* ---------- Avisos en el celular (web push)
+   La página no tiene servidor: el celular genera un código y se lo mandás al bot de Telegram.
+   En la próxima revisión, la nube lo guarda como secreto y desde ahí manda las notificaciones. */
+const b64url = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const claveBytes = k => Uint8Array.from(atob(k.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+let registroSW = null, claveVapid = null;
+
+async function prepararAvisos(clave) {
+  const boton = $("#activar"), zona = $("#avisos");
+  if (!clave) return;
+  claveVapid = clave;
+  const soporta = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const instalada = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  if (!soporta) {
+    if (ios && !instalada) {
+      zona.hidden = false;
+      zona.innerHTML = `<p>En iPhone, los avisos funcionan con la app instalada: tocá <b>Compartir → Agregar a inicio</b> y activalos desde ahí.</p>`;
+    }
+    return;
+  }
+  registroSW ||= await navigator.serviceWorker.register("sw.js");
+  const sub = await registroSW.pushManager.getSubscription();
+  boton.hidden = false;
+  boton.textContent = sub ? "Avisos activados · ver opciones" : "Activar avisos en este celular";
+  boton.onclick = () => sub ? mostrarActivos(sub) : activar(clave);
+}
+
+async function activar(clave) {
+  const zona = $("#avisos");
+  zona.hidden = false;
+  const permiso = await Notification.requestPermission();
+  if (permiso !== "granted") {
+    zona.innerHTML = `<p>El celular no dio permiso para notificaciones. Podés habilitarlo en los ajustes del sitio y volver a intentar.</p>`;
+    return;
+  }
+  try {
+    const sub = await registroSW.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: claveBytes(clave)});
+    mostrarCodigo(sub);
+    prepararAvisos(clave);
+  } catch (e) {
+    zona.innerHTML = `<p>No se pudo activar: ${esc(e.message)}</p>`;
+  }
+}
+
+function mostrarCodigo(sub) {
+  const codigo = "push:" + b64url(JSON.stringify(sub.toJSON()));
+  $("#avisos").innerHTML = `
+    <p><b>Último paso:</b> mandale este código al bot de Telegram. Lo registro en la próxima revisión (hasta una hora) y te llega una notificación de prueba.</p>
+    <textarea readonly aria-label="Código para el bot">${esc(codigo)}</textarea>
+    <div class="acciones">
+      <button class="link" type="button" id="copiar">Copiar código</button>
+      <a class="link" href="https://t.me/MonitorAvisosBot" target="_blank" rel="noopener">Abrir el bot</a>
+    </div>`;
+  $("#avisos textarea").addEventListener("focus", e => e.target.select());
+  $("#copiar").onclick = async () => {
+    try { await navigator.clipboard.writeText(codigo); $("#copiar").textContent = "Copiado"; }
+    catch (_) { $("#avisos textarea").select(); $("#copiar").textContent = "Seleccionado: copialo"; }
+  };
+}
+
+function mostrarActivos(sub) {
+  const zona = $("#avisos");
+  zona.hidden = false;
+  zona.innerHTML = `<p>Los avisos están activados en este celular. Si todavía no te llegó la notificación de prueba, revisá que le hayas mandado el código al bot.</p>
+    <div class="acciones"><button class="link" type="button" id="ver-codigo">Ver el código otra vez</button>
+    <button class="link" type="button" id="desactivar">Desactivar</button></div>`;
+  $("#ver-codigo").onclick = () => mostrarCodigo(sub);
+  $("#desactivar").onclick = async () => {
+    await sub.unsubscribe();  // la nube lo borra sola cuando el envío le devuelva "ya no existe"
+    zona.innerHTML = `<p>Listo, este celular ya no recibe avisos.</p>`;
+    prepararAvisos(claveVapid);
+  };
 }
 
 async function iniciar() {
