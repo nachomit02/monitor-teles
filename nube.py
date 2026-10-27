@@ -4,6 +4,7 @@ Uso (en tu PC):
   python nube.py publicar     crea el repo, sube los archivos, carga los secretos y lo corre una vez
   python nube.py actualizar   vuelve a subir los archivos (después de cambiar config.json o el código)
   python nube.py token        reemplaza el token de GitHub cuando está por vencer
+  python nube.py activar-push crea las claves de los avisos en el celular (una sola vez)
 
 Uso interno (lo corre GitHub Actions):
   python nube.py guardar-refresh   guarda el refresh token nuevo de Mercado Libre como secreto
@@ -30,7 +31,7 @@ ARCHIVOS = ["monitor.py", "nube.py", "config.json", "requirements.txt", "LEEME.m
             "logo_monitor.png", ".github/workflows/monitor.yml",
             "img/lg-oled-b5.webp", "img/tcl-c6k.webp", "img/tcl-c755.webp", "manifest.webmanifest",
             "img/icon-192.png", "img/icon-512.png", "img/icon-maskable-512.png", "img/apple-touch-icon.png",
-            "img/favicon-32.png"]
+            "img/favicon-32.png", "sw.js"]
 DIAS_AVISO_TOKEN = 14
 
 
@@ -179,8 +180,40 @@ def guardar_refresh():
         print("Refresh token de Mercado Libre actualizado.")
     else:
         print("Sin cambios en el refresh token.")
+    # celulares para avisos: se suman cuando mandás el código al bot y se borran si desactivás
+    subs = json.dumps(sec.get("push_subs", []), sort_keys=True)
+    anteriores = json.dumps(json.loads(os.environ.get("PUSH_SUBS_ANTERIOR") or "[]"), sort_keys=True)
+    if subs != anteriores:
+        poner_secreto(os.environ["GH_PAT"], os.environ["REPO"], "PUSH_SUBS", subs)
+        print(f"Celulares para avisos actualizados: {len(sec.get('push_subs', []))}.")
+
+
+def activar_push():
+    """Crea las claves de los avisos en el celular (una sola vez) y deja todo listo en la nube."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    b64 = lambda b: base64.urlsafe_b64encode(b).rstrip(b"=").decode()
+    token = pedir_token()
+    repo = f"{gh('GET', '/user', token)['login']}/{REPO_NOMBRE}"
+    sec = leer_secretos()
+    if not sec.get("vapid_private"):
+        clave = ec.generate_private_key(ec.SECP256R1())
+        sec["vapid_private"] = b64(clave.private_numbers().private_value.to_bytes(32, "big"))
+        sec["vapid_public"] = b64(clave.public_key().public_bytes(serialization.Encoding.X962,
+                                                                   serialization.PublicFormat.UncompressedPoint))
+        SECRETS.write_text(json.dumps(sec, ensure_ascii=False, indent=2), encoding="utf-8")
+    # la privada queda cifrada en GitHub; la pública va en config.json porque la página la necesita
+    poner_secreto(token, repo, "VAPID_PRIVATE", sec["vapid_private"])
+    if not gh("GET", f"/repos/{repo}/actions/secrets/PUSH_SUBS", token):
+        poner_secreto(token, repo, "PUSH_SUBS", "[]")
+    config_path = BASE / "config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config["vapid_publica"] = sec["vapid_public"]
+    config_path.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    subir_archivos(token, repo)
+    print("\nListo. En unos minutos, en la app vas a ver 'Activar avisos en este celular'.")
 
 
 if __name__ == "__main__":
     {"publicar": publicar, "actualizar": actualizar, "token": token_nuevo, "guardar-refresh": guardar_refresh,
-     "aviso-corrida": aviso_corrida}[sys.argv[1]]()
+     "aviso-corrida": aviso_corrida, "activar-push": activar_push}[sys.argv[1]]()
