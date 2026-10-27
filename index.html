@@ -4,222 +4,293 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monitor de teles</title>
+<meta name="description" content="Stock y precios de la LG OLED B5, la TCL C6K y la TCL C755 en tiendas argentinas, revisados cada hora.">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#000000">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2.5' y='4' width='19' height='13' rx='2' fill='none' stroke='%23111' stroke-width='2'/%3E%3Cpath d='M8 21h8' stroke='%23111' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='17.5' cy='13.5' r='1.6' fill='%231f5fd6'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="img/tcl-c6k.webp">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%23000'/%3E%3Crect x='4' y='6' width='16' height='10' rx='1.5' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3Cpath d='M9 19h6' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='16.6' cy='13.4' r='1.1' fill='%2346d58f'/%3E%3C/svg%3E">
 <style>
-  /* Un panel de trabajo, no una landing: color solo en datos, números tabulares, una pregunta por pantalla.
-     Tema oscuro en negro puro: la página se mira de noche en una pieza oscura (y el B5 es OLED). */
+  /* Idea: la pantalla de cada tele es el indicador de stock. Con stock se enciende; sin stock queda
+     apagada, en negro OLED. El negro de la pieza a oscuras es el escenario del encabezado y del Cyber. */
   :root {
-    --ground: #f6f7f8; --surface: #ffffff; --raised: #f3f4f5;
-    --border: #e4e6e8; --rule: #eff0f2; --grid: #eceef0; --control: #cfd3d8;
-    --text: #111316; --muted: #5b6068; --faint: #6b7078;
-    --accent: #1f5fd6; --accent-soft: rgba(31, 95, 214, .10);
-    --positive: #1d7a4b; --pill-pos-bg: #dcf6e6; --pill-pos-ink: #0a3a1f;
-    --primary: #15171a; --on-primary: #ffffff;
+    --ground: #f4f5f7; --surface: #ffffff; --stage: #e9ebee; --line: #dfe2e6;
+    --ink: #121417; --muted: #5a5f67; --faint: #6c7179;
+    --night: #000000; --night-ink: #f3f3f1; --night-muted: #a3a6ab;
+    --accent: #2b5fd9; --positive: #1b7a49; --positive-night: #46d58f;
+    --serif: "Instrument Serif", "Times New Roman", serif;
+    --sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-    --radius: 10px; --radius-control: 8px; --gap: 16px; --pad: 20px;
-    --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    --gutter: clamp(16px, 4vw, 56px);
   }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --ground: #000000; --surface: #0c0c0d; --raised: #161618;
-      --border: #202023; --rule: #19191b; --grid: #1f1f22; --control: #3a3a3f;
-      --text: #f2f2f3; --muted: #a9adb4; --faint: #8f949b;
-      --accent: #6ea2ff; --accent-soft: rgba(110, 162, 255, .14);
-      --positive: #4cc98a; --pill-pos-bg: #0f2619; --pill-pos-ink: #6fe0a3;
-      --primary: #f2f2f3; --on-primary: #000000;
+    :root {
+      --ground: #0a0a0b; --surface: #111113; --stage: #16161a; --line: #26262b;
+      --ink: #f1f1ef; --muted: #a6a9ae; --faint: #92959b;
+      --accent: #7aa5ff; --positive: #46d58f;
     }
-  }
-  :root[data-theme="dark"] {
-    --ground: #000000; --surface: #0c0c0d; --raised: #161618;
-    --border: #202023; --rule: #19191b; --grid: #1f1f22; --control: #3a3a3f;
-    --text: #f2f2f3; --muted: #a9adb4; --faint: #8f949b;
-    --accent: #6ea2ff; --accent-soft: rgba(110, 162, 255, .14);
-    --positive: #4cc98a; --pill-pos-bg: #0f2619; --pill-pos-ink: #6fe0a3;
-    --primary: #f2f2f3; --on-primary: #000000;
   }
 
   * { box-sizing: border-box; }
-  html { scrollbar-color: var(--control) var(--ground); }
-  body { margin: 0; background: var(--ground); color: var(--text);
-         font: 400 14px/20px var(--font); -webkit-font-smoothing: antialiased; }
-  ::selection { background: var(--accent-soft); color: var(--text); }
-  a { color: inherit; text-underline-offset: 3px; }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  html { scrollbar-color: var(--faint) var(--ground); scroll-behavior: smooth; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 400 16px/1.55 var(--sans);
+         -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  ::selection { background: var(--accent); color: #fff; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  img { display: block; max-width: 100%; }
   .num { font-variant-numeric: tabular-nums; }
+  .wrap { padding: 0 var(--gutter); max-width: 1440px; margin: 0 auto; }
 
-  /* Grilla: columna de 1120 = 12 × 78,67 + 11 × 16. Producto: tiendas 5 col (453) + gráfico 7 col (651). */
-  .wrap { max-width: 1168px; margin: 0 auto; padding: 0 24px; }
+  /* Link subrayado, como en la referencia: la línea se retira hacia la derecha y vuelve desde la izquierda */
+  .link { display: inline-block; position: relative; text-decoration: none; text-transform: uppercase;
+          letter-spacing: 0.08em; font-size: 13px; font-weight: 500; padding: 4px 0; }
+  .link::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: currentColor;
+                 transform-origin: right; transition: transform 320ms var(--ease-out); }
+  @media (hover: hover) and (pointer: fine) {
+    .link:hover::after { transform: scaleX(0); }
+    .link:hover { color: inherit; }
+  }
+  .link:active { transform: scale(0.97); transition: transform 120ms var(--ease-out); }
 
-  header.bar { height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; text-decoration: none; }
-  .brand svg { flex: none; }
-  .bar nav { display: flex; gap: 20px; color: var(--muted); }
-  .bar nav a { text-decoration: none; }
-  @media (hover: hover) and (pointer: fine) { .bar nav a:hover { color: var(--text); } }
+  /* ---------- Barra */
+  .bar { position: fixed; inset: 0 0 auto 0; z-index: 10; color: var(--night-ink);
+         transition: background-color 240ms ease, color 240ms ease, box-shadow 240ms ease; }
+  .bar.solid { background: var(--ground); color: var(--ink); box-shadow: 0 1px 0 var(--line); }
+  .bar .wrap { height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+  .mark { font-family: var(--serif); font-size: 22px; letter-spacing: 0.02em; text-decoration: none; white-space: nowrap; }
+  .bar nav { display: flex; gap: 32px; }
+  .bar nav a { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; opacity: .82;
+               transition: opacity 160ms ease; }
+  @media (hover: hover) and (pointer: fine) { .bar nav a:hover { opacity: 1; } }
 
-  .title { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding: 28px 0 24px; }
-  h1 { font-size: 24px; line-height: 30px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 6px; }
-  .finding { margin: 0; font-size: 16px; line-height: 24px; max-width: 62ch; }
-  .finding .pos { color: var(--positive); }
-  .title-side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex: none; }
-  .stamp { color: var(--muted); font-size: 13px; text-align: right; }
-  .stamp button { font: inherit; color: var(--text); background: none; border: 0; padding: 0 0 0 6px;
-                  cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  /* ---------- Encabezado: la pieza a oscuras */
+  .hero { background: var(--night); color: var(--night-ink); min-height: 100svh; display: flex; flex-direction: column;
+          padding-top: 68px; overflow: hidden; }
+  .hero-copy { padding-top: clamp(32px, 7vh, 96px); width: 100%; }
+  .hero-copy > * { max-width: 920px; }
+  .hero h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(44px, 7.2vw, 112px); line-height: 0.98;
+             letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+  .hero h1 em { font-style: italic; }
+  .hero .lead { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.5; color: var(--night-muted); max-width: 46ch; margin: 28px 0 0; }
+  .hero .lead b { color: var(--night-ink); font-weight: 500; }
+  .hero .lead .pos { color: var(--positive-night); }
+  .hero .ctas { display: flex; gap: 28px; margin-top: 32px; align-items: center; flex-wrap: wrap; }
 
-  .btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px;
-         border-radius: var(--radius-control); background: var(--primary); color: var(--on-primary);
-         font-weight: 500; text-decoration: none; transition: transform 160ms var(--ease-out); }
-  .btn:active { transform: scale(0.97); }
+  .showroom { margin-top: auto; padding-top: 48px; padding-bottom: 32px; display: grid; grid-template-columns: repeat(3, 1fr);
+              gap: clamp(16px, 3vw, 48px); align-items: end; width: 100%; }
+  .tv { text-decoration: none; display: block; }
+  .tv .screen { height: clamp(150px, 30vh, 300px); display: flex; align-items: flex-end; justify-content: center; }
+  .tv img { width: 100%; height: 100%; object-fit: contain; object-position: bottom;
+            filter: brightness(0.16) grayscale(1); transform: scale(0.985);
+            transition: filter 1100ms var(--ease-out), transform 1100ms var(--ease-out); }
+  .tv.on img { filter: none; transform: none; }
+  .tv .cap { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 18px;
+             padding-top: 14px; border-top: 1px solid #2a2a2e; }
+  .tv .name { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .tv .state { font-family: var(--serif); font-size: clamp(18px, 1.8vw, 26px); color: var(--night-muted); white-space: nowrap; }
+  .tv.on .state { color: var(--night-ink); }
+  .tv .led { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #5a1d1d; margin-right: 8px;
+             vertical-align: 3px; transition: background-color 600ms ease; }
+  .tv.on .led { background: var(--positive-night); }
 
-  /* Resumen: un solo contenedor dividido, una columna por tele */
-  .summary { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface);
-             border: 1px solid var(--border); border-radius: var(--radius); }
-  .summary > a { padding: 18px var(--pad); text-decoration: none; border-left: 1px solid var(--border);
-                 transition: background-color 160ms ease; }
-  .summary > a:first-child { border-left: 0; border-radius: var(--radius) 0 0 var(--radius); }
-  .summary > a:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
-  @media (hover: hover) and (pointer: fine) { .summary > a:hover { background: var(--raised); } }
-  .k-label { color: var(--muted); font-weight: 500; }
-  .k-value { font-size: 26px; line-height: 34px; margin-top: 6px; font-weight: 500; }
-  .k-value.none { color: var(--muted); font-weight: 400; }
-  .k-sub { color: var(--muted); margin-top: 2px; }
-  .k-sub .pos { color: var(--positive); font-weight: 500; }
+  /* ---------- Presentación */
+  .statement { padding: clamp(96px, 14vw, 180px) 0; text-align: center; }
+  .statement p { font-family: var(--serif); font-style: italic; font-size: clamp(24px, 2.6vw, 34px); line-height: 1.3;
+                 max-width: 30ch; margin: 0 auto; text-wrap: balance; }
+  .statement .link { margin-top: 32px; }
 
-  .notice { margin-top: var(--gap); color: var(--muted); }
-  .notice b { color: var(--text); font-weight: 500; }
+  /* ---------- Capítulos */
+  .chapter { padding-bottom: clamp(96px, 12vw, 176px); }
+  .chapter-grid { display: grid; grid-template-columns: 7fr 5fr; gap: clamp(32px, 5vw, 88px); align-items: start; }
+  .chapter.flip .chapter-grid { grid-template-columns: 5fr 7fr; }
+  .chapter.flip .stage { order: 2; }
+  .stage { background: var(--stage); aspect-ratio: 5 / 4; display: flex; align-items: center; justify-content: center;
+           padding: clamp(24px, 6%, 72px); overflow: hidden; position: sticky; top: 92px; }
+  .stage img { width: 100%; height: 100%; object-fit: contain; transition: filter 900ms var(--ease-out); }
+  .stage.off img { filter: brightness(0.2) grayscale(1); }
+  .stage .tag { position: absolute; left: 20px; bottom: 16px; font-size: 13px; color: var(--muted); }
+  .info h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(40px, 4.6vw, 68px); line-height: 1; letter-spacing: -0.015em; margin: 0; }
+  .info .kind { color: var(--muted); margin: 12px 0 0; }
+  .price { font-family: var(--serif); font-size: clamp(44px, 5vw, 72px); line-height: 1; margin: 44px 0 0; letter-spacing: -0.01em; }
+  .price.none { color: var(--muted); }
+  .verdict { margin: 12px 0 0; color: var(--muted); }
+  .verdict .pos { color: var(--positive); font-weight: 500; }
+  .info .ctas { margin-top: 24px; display: flex; gap: 24px; flex-wrap: wrap; }
 
-  section.product { margin-top: 40px; }
-  .p-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 12px; }
-  h2 { font-size: 18px; line-height: 24px; font-weight: 600; margin: 0; }
-  .p-meta { color: var(--muted); }
-  .p-grid { display: grid; grid-template-columns: 5fr 7fr; gap: var(--gap); align-items: stretch; }
-  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); min-width: 0; }
-
-  table { width: 100%; border-collapse: collapse; }
-  th { font-weight: 400; font-size: 12px; color: var(--muted); text-align: left; padding: 12px var(--pad) 8px; }
-  td { padding: 0 var(--pad); height: 46px; border-top: 1px solid var(--rule); }
-  th.r, td.r { text-align: right; }
-  td.store a { text-decoration: none; font-weight: 500; }
-  td.store, td.r, .delta { white-space: nowrap; }
-  th.r::after { content: " · vs. tope"; }
-  @media (hover: hover) and (pointer: fine) { td.store a:hover { text-decoration: underline; } }
-  td.state { color: var(--muted); }
-  .pill { display: inline-block; flex: none; white-space: nowrap; padding: 2px 8px; border-radius: 999px;
-          font-size: 12px; line-height: 16px; font-weight: 500; background: var(--pill-pos-bg); color: var(--pill-pos-ink); }
+  .stores { margin-top: 44px; }
+  .stores h3, .history h3 { font-size: 13px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 8px; }
+  .row { display: grid; grid-template-columns: 1fr auto auto; gap: 16px; align-items: baseline; padding: 13px 0;
+         border-top: 1px solid var(--line); text-decoration: none; }
+  .row:last-child { border-bottom: 1px solid var(--line); }
+  .row .who { font-weight: 500; }
+  .row .what { color: var(--muted); font-size: 14px; }
+  .row .how { text-align: right; min-width: 7.5em; }
+  .row .how small { display: block; font-size: 12px; color: var(--muted); }
+  .row .how small.pos { color: var(--positive); }
+  .row.has .what { color: var(--positive); }
+  @media (hover: hover) and (pointer: fine) {
+    a.row { transition: padding 0ms; }
+    a.row:hover .who { text-decoration: underline; text-underline-offset: 3px; }
+  }
   .dash { color: var(--faint); }
-  .delta { display: block; font-size: 12px; line-height: 16px; color: var(--muted); }
-  .delta.pos { color: var(--positive); }
 
-  .chart-panel { padding: 14px var(--pad) 12px; display: flex; flex-direction: column; }
-  .c-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 22px; }
-  .c-title { font-weight: 500; }
-  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); font-size: 12px; }
-  .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
-  .plot { position: relative; flex: 1; min-height: 210px; margin-top: 8px; }
+  .history { margin-top: 44px; }
+  .plot { position: relative; height: 190px; }
   .plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
-  .plot text { font: 400 12px var(--font); fill: var(--muted); font-variant-numeric: tabular-nums; }
-  .empty { margin: auto 0; padding: 14px 16px; border: 1px dashed var(--control); border-radius: 8px; color: var(--muted); }
-
-  .tip { position: absolute; top: 0; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
-         border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 18px; white-space: nowrap;
-         box-shadow: 0 4px 16px rgba(0, 0, 0, .08); opacity: 0; transform: scale(0.97);
+  .plot text { font: 400 12px var(--sans); fill: var(--muted); font-variant-numeric: tabular-nums; }
+  .quiet { color: var(--muted); margin: 0; padding: 18px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .tip { position: absolute; top: 0; pointer-events: none; background: var(--surface); color: var(--ink);
+         border: 1px solid var(--line); padding: 8px 10px; font-size: 12px; line-height: 18px; white-space: nowrap;
+         box-shadow: 0 6px 20px rgba(0, 0, 0, .10); opacity: 0; transform: translateY(2px);
          transition: opacity 125ms var(--ease-out), transform 125ms var(--ease-out); }
   .tip.on { opacity: 1; transform: none; }
-  .tip b { font-weight: 500; }
 
-  footer { margin: 48px 0 40px; color: var(--muted); font-size: 13px; }
+  /* ---------- Cyber Monday: otra vez la noche */
+  .cyber { background: var(--night); color: var(--night-ink); padding: clamp(96px, 13vw, 176px) 0; }
+  .cyber-grid { display: grid; grid-template-columns: 5fr 7fr; gap: 48px; align-items: end; }
+  .cyber h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(40px, 4.6vw, 68px); line-height: 1; margin: 0; }
+  .cyber p { color: var(--night-muted); max-width: 40ch; margin: 20px 0 0; }
+  .count { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .count div { border-top: 1px solid #2a2a2e; padding-top: 14px; }
+  .count b { display: block; font-family: var(--serif); font-weight: 400; font-size: clamp(56px, 8vw, 132px); line-height: .9;
+             font-variant-numeric: tabular-nums; }
+  .count span { color: var(--night-muted); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
 
-  /* Esqueleto de carga: el layout final con barras grises del tamaño real, sin brillo animado */
-  .sk { display: inline-block; background: var(--raised); border-radius: 4px; color: transparent; }
+  /* ---------- Cierre */
+  footer { padding: clamp(80px, 10vw, 140px) 0 40px; }
+  .giant { font-family: var(--serif); font-size: clamp(56px, 17.4vw, 252px); line-height: .9; letter-spacing: -0.03em;
+           margin: 0; white-space: nowrap; }
+  .foot { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-top: 40px; color: var(--muted); font-size: 14px; }
+  .foot nav { display: flex; gap: 28px; }
+  .foot button { font: inherit; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer;
+                 text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ---------- Entradas al hacer scroll (solo si hay JavaScript; sin JS todo está visible) */
+  .js [data-reveal] { opacity: 0; transform: translateY(24px);
+                      transition: opacity 800ms var(--ease-out), transform 800ms var(--ease-out);
+                      transition-delay: calc(var(--i, 0) * 80ms); }
+  .js [data-reveal].in { opacity: 1; transform: none; }
+  .js .stage[data-reveal] img { transform: scale(1.04); transition: transform 1400ms var(--ease-out), filter 900ms var(--ease-out); }
+  .js .stage[data-reveal].in img { transform: none; }
+  .sk { color: transparent; background: #1a1a1d; border-radius: 4px; }
 
   @media (prefers-reduced-motion: reduce) {
-    .btn, .tip, .summary > a { transition: none; }
-    .btn:active { transform: none; }
+    html { scroll-behavior: auto; }
+    .js [data-reveal] { transform: none; transition: opacity 300ms ease; transition-delay: 0ms; }
+    .js .stage[data-reveal] img, .tv img { transform: none; }
+    .tv img { transition: filter 300ms ease; }
+    .link::after { transition: none; }
   }
 
-  @media (max-width: 860px) {
-    .p-grid { grid-template-columns: 1fr; }
-    .title { flex-direction: column; align-items: flex-start; }
-    .title-side { align-items: flex-start; }
-    .stamp { text-align: left; }
+  @media (max-width: 900px) {
+    .chapter-grid, .cyber-grid, .chapter.flip .chapter-grid { grid-template-columns: 1fr; }
+    .chapter.flip .stage { order: 0; }
+    .stage { position: relative; top: 0; }
+    .bar nav a.wide { display: none; }
   }
   @media (max-width: 640px) {
-    .wrap { padding: 0 16px; }
-    .bar nav a.hide-sm { display: none; }
-    h1 { font-size: 22px; }
-    .summary { grid-template-columns: 1fr; }
-    .summary > a { border-left: 0; border-top: 1px solid var(--border); display: grid;
-                   grid-template-columns: 1fr auto; column-gap: 12px; align-items: baseline; padding: 14px 16px; }
-    .summary > a:first-child { border-top: 0; border-radius: var(--radius) var(--radius) 0 0; }
-    .summary > a:last-child { border-radius: 0 0 var(--radius) var(--radius); }
-    .k-value { font-size: 20px; line-height: 26px; margin: 0; grid-row: 1; grid-column: 2; text-align: right; }
-    .k-sub { grid-column: 1 / -1; }
-    th, td { padding-left: 16px; padding-right: 16px; }
-    .p-head { flex-direction: column; gap: 2px; }
-    th.r::after { content: none; }
-    th, td { padding-left: 12px; padding-right: 12px; }
-    td { font-size: 13px; }
-    .chart-panel { padding: 12px 16px; }
-    .plot { min-height: 180px; }
+    .bar .wrap { height: 60px; }
+    .hero { padding-top: 60px; }
+    /* en el celular, las teles en un carrusel: una grande y la siguiente asomando */
+    .showroom { display: flex; gap: 20px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+                padding-bottom: 28px; }
+    .showroom::-webkit-scrollbar { display: none; }
+    .showroom { scroll-padding-left: var(--gutter); }
+    .tv { flex: 0 0 78%; scroll-snap-align: start; }
+    .tv .screen { height: 210px; }
+    .tv .state { font-size: 22px; }
+    .count { grid-template-columns: repeat(2, 1fr); row-gap: 24px; }
+    .row .what { display: none; }
+    .row { grid-template-columns: 1fr auto; }
   }
 </style>
+<script>document.documentElement.classList.add("js")</script>
 </head>
 <body>
-<div class="wrap">
-  <header class="bar">
-    <a class="brand" href="./" aria-label="Monitor de teles, inicio">
-      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="2.5" y="4" width="19" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
-        <path d="M8 21h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <circle cx="17.5" cy="13.5" r="1.6" fill="var(--accent)"/>
-      </svg>
-      Monitor de teles
-    </a>
-    <nav>
-      <a class="hide-sm" href="https://github.com/nachomit02/monitor-teles/actions" target="_blank" rel="noopener">Revisiones</a>
+<header class="bar" id="bar">
+  <div class="wrap">
+    <a class="mark" href="#top">Monitor de teles</a>
+    <nav aria-label="Secciones">
+      <a class="wide" href="#teles">Las teles</a>
+      <a class="wide" href="#cyber">Cyber Monday</a>
       <a href="https://t.me/MonitorAvisosBot" target="_blank" rel="noopener">Telegram</a>
     </nav>
-  </header>
+  </div>
+</header>
 
-  <main id="app" aria-live="polite">
-    <div class="title">
-      <div>
-        <h1>Stock y precios</h1>
-        <p class="finding"><span class="sk">Revisando el último estado de las tiendas…</span></p>
+<main id="top">
+  <section class="hero" aria-labelledby="titulo">
+    <div class="wrap hero-copy">
+      <h1 id="titulo">Revisando las tiendas…</h1>
+      <p class="lead" id="lead"><span class="sk">Leyendo el último estado de stock y precios de cada tienda.</span></p>
+      <div class="ctas" id="hero-ctas"></div>
+    </div>
+    <div class="wrap showroom" id="showroom">
+      <a class="tv" href="#tele-0"><div class="screen"><img src="img/lg-oled-b5.webp" alt="LG OLED B5 de 55 pulgadas" width="754" height="465"></div>
+        <div class="cap"><span class="name">LG OLED B5</span><span class="state">—</span></div></a>
+      <a class="tv" href="#tele-1"><div class="screen"><img src="img/tcl-c6k.webp" alt="TCL C6K de 55 pulgadas" width="1058" height="938"></div>
+        <div class="cap"><span class="name">TCL C6K</span><span class="state">—</span></div></a>
+      <a class="tv" href="#tele-2"><div class="screen"><img src="img/tcl-c755.webp" alt="TCL C755 de 55 pulgadas" width="516" height="458"></div>
+        <div class="cap"><span class="name">TCL C755</span><span class="state">—</span></div></a>
+    </div>
+  </section>
+
+  <section class="statement wrap" aria-label="Cómo funciona">
+    <p id="statement" data-reveal>Reviso las tiendas cada hora y te escribo por Telegram apenas una de estas teles vuelve a tener stock o baja de precio.</p>
+    <a class="link" href="https://t.me/MonitorAvisosBot" target="_blank" rel="noopener" data-reveal style="--i:1">Abrir el bot de Telegram</a>
+  </section>
+
+  <div id="teles"></div>
+
+  <section class="cyber" id="cyber" aria-labelledby="cyber-titulo" hidden>
+    <div class="wrap cyber-grid">
+      <div data-reveal>
+        <h2 id="cyber-titulo">Cyber Monday</h2>
+        <p id="cyber-texto">Del 2 al 4 de noviembre. Esos días el monitor revisa cada 15 minutos, así te enterás primero.</p>
+      </div>
+      <div class="count num" id="count" data-reveal style="--i:1" aria-live="off">
+        <div><b id="c-d">0</b><span>días</span></div><div><b id="c-h">00</b><span>horas</span></div>
+        <div><b id="c-m">00</b><span>minutos</span></div><div><b id="c-s">00</b><span>segundos</span></div>
       </div>
     </div>
-    <div class="summary" aria-hidden="true">
-      <a><div class="k-label"><span class="sk">LG OLED B5 55"</span></div><div class="k-value"><span class="sk">$0.000.000</span></div><div class="k-sub"><span class="sk">Sin stock en 0 tiendas</span></div></a>
-      <a><div class="k-label"><span class="sk">TCL C6K 55"</span></div><div class="k-value"><span class="sk">$0.000.000</span></div><div class="k-sub"><span class="sk">Sin stock en 0 tiendas</span></div></a>
-      <a><div class="k-label"><span class="sk">TCL C755 55"</span></div><div class="k-value"><span class="sk">$0.000.000</span></div><div class="k-sub"><span class="sk">Sin stock en 0 tiendas</span></div></a>
-    </div>
-    <noscript><p>Esta página necesita JavaScript para leer los datos del monitor.</p></noscript>
-  </main>
+  </section>
+</main>
 
-  <footer>Datos de las revisiones automáticas del monitor. Los precios con stock se guardan 30 días.</footer>
-</div>
+<footer class="wrap">
+  <p class="giant" aria-hidden="true">Monitor de teles</p>
+  <div class="foot">
+    <span id="stamp">Cargando datos…</span>
+    <nav aria-label="Enlaces">
+      <a href="https://github.com/nachomit02/monitor-teles/actions" target="_blank" rel="noopener">Revisiones</a>
+      <a href="https://t.me/MonitorAvisosBot" target="_blank" rel="noopener">Telegram</a>
+    </nav>
+    <span>Fotos de producto: Newsan, Cetrogar y Coppel.</span>
+  </div>
+</footer>
 
 <script>
 const RAW = "https://raw.githubusercontent.com/nachomit02/monitor-teles/main/";
 const CYBER = {inicio: new Date("2026-11-02T00:00:00-03:00"), fin: new Date("2026-11-05T00:00:00-03:00")};
-const NOMBRES = {Tiendanewsan: "Newsan", Mercadolibre: "Mercado Libre", Casadelaudio: "Casa del Audio",
-                 Fravega: "Frávega", Coopehogar: "Coopehogar", Coppel: "Coppel", Megatone: "Megatone", Cetrogar: "Cetrogar"};
+const FOTOS = {OLED55B5: ["img/lg-oled-b5.webp", 754, 465], "55C6K": ["img/tcl-c6k.webp", 1058, 938], "55C755": ["img/tcl-c755.webp", 516, 458]};
+const NOMBRES = {Tiendanewsan: "Newsan", Mercadolibre: "Mercado Libre", Casadelaudio: "Casa del Audio", Fravega: "Frávega"};
 const ESTADOS = {disponible: "Hay stock", sin_stock: "Sin stock", no_publicado: "No lo publica",
                  bloqueado: "Bloquea al monitor", no_existe: "Link caído", desconocido: "No se pudo leer"};
 const ORDEN = {disponible: 0, sin_stock: 1, no_publicado: 2, desconocido: 3, no_existe: 3, bloqueado: 4};
+const HUECO = 12 * 3600e3;  // más de 12 h sin precio = se agotó (GitHub a veces saltea revisiones)
+const TZ = "America/Argentina/Buenos_Aires";
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 const fmt = n => "$" + Math.round(n).toLocaleString("es-AR");
 const corto = nombre => nombre.split(" 55")[0];
+const tipo = nombre => nombre.includes("OLED") ? "OLED de 55 pulgadas" : "Mini LED de 55 pulgadas";
 const aFecha = s => new Date(s.replace(" ", "T") + ":00-03:00").getTime();
-const ddmm = t => new Date(t).toLocaleDateString("es-AR", {day: "2-digit", month: "2-digit", timeZone: "America/Argentina/Buenos_Aires"});
-const hhmm = t => new Date(t).toLocaleTimeString("es-AR", {hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Argentina/Buenos_Aires"});
-const HUECO = 12 * 3600e3;  // sin precio por más de 12 h = se agotó (GitHub a veces saltea revisiones)
+const ddmm = t => new Date(t).toLocaleDateString("es-AR", {day: "2-digit", month: "2-digit", timeZone: TZ});
+const hhmm = t => new Date(t).toLocaleTimeString("es-AR", {hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ});
 const tiendaDe = url => {
   const t = new URL(url.split("#")[0]).hostname.replace("www.", "").split(".")[0];
   const k = t.charAt(0).toUpperCase() + t.slice(1);
@@ -252,7 +323,7 @@ async function traer(archivo, json) {
   return json ? r.json() : r.text();
 }
 
-/* Una fila por tienda: se queda con su mejor estado (y el precio más bajo si hay stock) */
+/* Una fila por tienda: su mejor estado (y el precio más bajo si tiene stock) */
 function tiendasDe(prod, estado, ultima) {
   const porTienda = {};
   for (const [url, v] of Object.entries(estado)) {
@@ -260,64 +331,51 @@ function tiendasDe(prod, estado, ultima) {
     const t = tiendaDe(url);
     const fila = {tienda: t, estado: v.estado, precio: v.estado === "disponible" ? v.precio : null, url: url.split("#")[0]};
     const prev = porTienda[t];
-    const mejor = !prev || ORDEN[fila.estado] < ORDEN[prev.estado] ||
-      (fila.estado === prev.estado && fila.precio && (!prev.precio || fila.precio < prev.precio));
-    if (mejor) porTienda[t] = fila;
+    if (!prev || ORDEN[fila.estado] < ORDEN[prev.estado] ||
+        (fila.estado === prev.estado && fila.precio && (!prev.precio || fila.precio < prev.precio))) porTienda[t] = fila;
   }
   return Object.values(porTienda).sort((a, b) =>
     (ORDEN[a.estado] - ORDEN[b.estado]) || ((a.precio || 0) - (b.precio || 0)) || a.tienda.localeCompare(b.tienda));
 }
 
-function hallazgo(resumenes) {
+function frente(resumenes, comprable) {
   const conStock = resumenes.filter(r => r.mejor);
   const sinStock = resumenes.filter(r => !r.mejor).map(r => corto(r.prod.nombre));
   const lista = xs => xs.length > 1 ? xs.slice(0, -1).join(", ") + " y " + xs.at(-1) : xs[0];
-  const partes = conStock.map(r => {
-    const dif = r.prod.precio_max - r.mejor.precio;
-    return dif >= 0
-      ? `La ${esc(corto(r.prod.nombre))} está en ${esc(r.mejor.tienda)} a ${fmt(r.mejor.precio)}, <span class="pos">${fmt(dif)} debajo de tu tope</span>.`
-      : `La ${esc(corto(r.prod.nombre))} aparece en ${esc(r.mejor.tienda)} a ${fmt(r.mejor.precio)}, ${fmt(-dif)} arriba de tu tope.`;
-  });
-  if (!conStock.length) return "Ninguna de las tres tiene stock todavía. Te aviso por Telegram apenas aparezca.";
-  if (sinStock.length) partes.push(`${sinStock.length > 1 ? "La " + lista(sinStock) + " siguen" : "La " + sinStock[0] + " sigue"} sin stock.`);
-  return partes.join(" ");
-}
-
-function cyberTexto(ahora) {
-  if (ahora >= CYBER.fin) return "";
-  if (ahora >= CYBER.inicio) return "<b>Cyber Monday en curso:</b> revisando cada 15 minutos hasta el 4/11.";
-  const dias = Math.ceil((CYBER.inicio - ahora) / 864e5);
-  return `<b>Cyber Monday en ${dias} ${dias === 1 ? "día" : "días"}</b> (2 al 4 de noviembre). Esos días revisa cada 15 minutos.`;
-}
-
-function hace(ms) {
-  const min = Math.round(ms / 60000);
-  if (min < 1) return "recién";
-  if (min < 60) return `hace ${min} min`;
-  const h = Math.floor(min / 60);
-  return h < 24 ? `hace ${h} h ${min % 60} min` : `hace ${Math.floor(h / 24)} días`;
+  let titulo, lead;
+  if (comprable) {
+    const dif = comprable.prod.precio_max - comprable.mejor.precio;
+    titulo = `La ${esc(corto(comprable.prod.nombre).replace("TCL ", ""))} <em>ya se puede</em> comprar.`;
+    lead = `<b>${esc(comprable.mejor.tienda)}</b> la tiene a <b class="num">${fmt(comprable.mejor.precio)}</b>, <span class="pos num">${fmt(dif)} debajo de tu tope</span>.`;
+  } else if (conStock.length) {
+    const r = conStock[0];
+    titulo = `Hay stock, <em>pero caro.</em>`;
+    lead = `La ${esc(corto(r.prod.nombre))} aparece en ${esc(r.mejor.tienda)} a <b class="num">${fmt(r.mejor.precio)}</b>, ${fmt(r.mejor.precio - r.prod.precio_max)} arriba de tu tope.`;
+  } else {
+    titulo = `Todavía <em>esperando.</em>`;
+    lead = `Ninguna de las tres tiene stock por ahora. Apenas una aparezca, te llega un mensaje.`;
+  }
+  if (sinStock.length && conStock.length) lead += ` La ${lista(sinStock)} ${sinStock.length > 1 ? "siguen" : "sigue"} sin stock.`;
+  return {titulo, lead};
 }
 
 function filaTienda(f, prod) {
   let precio = '<span class="dash" aria-label="sin precio">—</span>';
   if (f.precio) {
     const dif = prod.precio_max - f.precio;
-    precio = `<span class="num">${fmt(f.precio)}</span><span class="delta num ${dif >= 0 ? "pos" : ""}">${dif >= 0 ? fmt(dif) + " debajo" : fmt(-dif) + " arriba"}</span>`;
+    precio = `<span class="num">${fmt(f.precio)}</span><small class="num ${dif >= 0 ? "pos" : ""}">${dif >= 0 ? fmt(dif) + " debajo del tope" : fmt(-dif) + " arriba del tope"}</small>`;
   }
-  const estado = f.estado === "disponible" ? `<span class="pill">${ESTADOS.disponible}</span>` : esc(ESTADOS[f.estado] || f.estado);
-  return `<tr><td class="store"><a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.tienda)}</a></td>
-    <td class="state">${estado}</td><td class="r">${precio}</td></tr>`;
+  return `<a class="row ${f.estado === "disponible" ? "has" : ""}" href="${esc(f.url)}" target="_blank" rel="noopener">
+    <span class="who">${esc(f.tienda)}</span><span class="what">${esc(ESTADOS[f.estado] || f.estado)}</span><span class="how">${precio}</span></a>`;
 }
 
-/* ---------- Gráfico de precios: SVG propio, escalones (el precio se mantiene hasta la próxima revisión) */
+/* ---------- Gráfico: escalones, una línea por tienda, la más barata en color */
 function pasoLindo(rango, n) {
   const crudo = rango / n, pot = 10 ** Math.floor(Math.log10(crudo));
   return [1, 2, 2.5, 5, 10].map(m => m * pot).find(p => p >= crudo);
 }
-
 function dibujar(cont, series, tope, desde, hasta) {
-  const W = cont.clientWidth, H = cont.clientHeight;
-  const izq = 78, der = 12, arr = 10, aba = 24;
+  const W = cont.clientWidth, H = cont.clientHeight, izq = 78, der = 8, arr = 8, aba = 24;
   const precios = series.flatMap(s => s.puntos.map(p => p.y)).concat(tope);
   const paso = pasoLindo(Math.max(...precios) - Math.min(...precios) || tope * 0.2, 4);
   const yMin = Math.floor((Math.min(...precios) - paso * 0.5) / paso) * paso;
@@ -326,89 +384,91 @@ function dibujar(cont, series, tope, desde, hasta) {
   const y = v => arr + (yMax - v) / (yMax - yMin) * (H - arr - aba);
   let s = `<svg role="img" aria-label="Precio por tienda en el tiempo">`;
   for (let v = yMin; v <= yMax + 1; v += paso) {
-    s += `<line x1="${izq}" x2="${W - der}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/>`;
+    s += `<line x1="${izq}" x2="${W - der}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/>`;
     s += `<text x="${izq - 10}" y="${y(v) + 4}" text-anchor="end">${fmt(v)}</text>`;
   }
-  // marcas en horas o días redondos (hora argentina), las que entren sin pisarse
-  const maxTicks = Math.max(2, Math.floor((W - izq) / 90));
+  const maxTicks = Math.max(2, Math.floor((W - izq) / 96));
   const pasos = [3, 6, 12, 24, 48, 72, 168].map(h => h * 3600e3);
   const pasoT = pasos.find(p => (hasta - desde) / p <= maxTicks) || pasos.at(-1);
-  const OFF = 3 * 3600e3;  // UTC-3
-  for (let t = Math.ceil((desde - OFF) / pasoT) * pasoT + OFF; t <= hasta; t += pasoT) {
-    const etiqueta = pasoT < 864e5 ? `${ddmm(t)} ${hhmm(t)}` : ddmm(t);
-    s += `<line x1="${x(t)}" x2="${x(t)}" y1="${H - aba}" y2="${H - aba + 4}" stroke="var(--control)"/>`;
-    s += `<text x="${x(t)}" y="${H - 4}" text-anchor="middle">${etiqueta}</text>`;
-  }
+  const OFF = 3 * 3600e3;
+  for (let t = Math.ceil((desde - OFF) / pasoT) * pasoT + OFF; t <= hasta; t += pasoT)
+    s += `<text x="${x(t)}" y="${H - 4}" text-anchor="middle">${pasoT < 864e5 ? ddmm(t) + " " + hhmm(t) : ddmm(t)}</text>`;
   s += `<line x1="${izq}" x2="${W - der}" y1="${y(tope)}" y2="${y(tope)}" stroke="var(--muted)" stroke-dasharray="4 4"/>`;
-  s += `<text x="${W - der}" y="${y(tope) - 6}" text-anchor="end">Tu tope ${fmt(tope)}</text>`;
+  s += `<text x="${W - der}" y="${y(tope) - 7}" text-anchor="end">Tu tope ${fmt(tope)}</text>`;
   for (const se of [...series].reverse()) {
     let d = "", prev = null;
     for (const p of se.puntos) {
-      // más de 3 h sin precio = se agotó: se corta la línea
-      if (!prev || p.t - prev.t > HUECO) d += `M${x(p.t)},${y(p.y)}`;
-      else d += `H${x(p.t)}V${y(p.y)}`;
+      d += !prev || p.t - prev.t > HUECO ? `M${x(p.t)},${y(p.y)}` : `H${x(p.t)}V${y(p.y)}`;
       prev = p;
     }
     const ult = se.puntos.at(-1);
-    s += `<path d="${d}" fill="none" stroke="${se.color}" stroke-width="2" stroke-linejoin="round"/>`;
-    s += `<circle cx="${x(ult.t)}" cy="${y(ult.y)}" r="3" fill="${se.color}"/>`;
+    s += `<path d="${d}" fill="none" stroke="${se.color}" stroke-width="2"/><circle cx="${x(ult.t)}" cy="${y(ult.y)}" r="3" fill="${se.color}"/>`;
   }
-  s += `<line class="cursor" x1="0" x2="0" y1="${arr}" y2="${H - aba}" stroke="var(--control)" visibility="hidden"/></svg>`;
-  s += `<div class="tip" role="presentation"></div>`;
+  s += `<line class="cursor" y1="${arr}" y2="${H - aba}" stroke="var(--faint)" visibility="hidden"/></svg><div class="tip"></div>`;
   cont.innerHTML = s;
-
   const svg = cont.querySelector("svg"), cur = cont.querySelector(".cursor"), tip = cont.querySelector(".tip");
-  const mover = ev => {
-    const r = svg.getBoundingClientRect(), px = ev.clientX - r.left;
+  const ocultar = () => { cur.setAttribute("visibility", "hidden"); tip.classList.remove("on"); };
+  svg.addEventListener("pointerleave", ocultar);
+  svg.addEventListener("pointermove", ev => {
+    const px = ev.clientX - svg.getBoundingClientRect().left;
     if (px < izq || px > W - der) return ocultar();
     const t = desde + (px - izq) / (W - izq - der) * (hasta - desde);
     const filas = series.map(se => {
       const p = [...se.puntos].reverse().find(q => q.t <= t);
-      return p && t - p.t <= HUECO ? `<div><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${se.color};margin-right:6px"></i>${esc(se.nombre)} <b class="num">${fmt(p.y)}</b></div>` : "";
+      return p && t - p.t <= HUECO ? `<div><span style="color:${se.color}">●</span> ${esc(se.nombre)} <b class="num">${fmt(p.y)}</b></div>` : "";
     }).join("");
     cur.setAttribute("x1", px); cur.setAttribute("x2", px); cur.setAttribute("visibility", "visible");
     tip.innerHTML = `<div>${ddmm(t)} ${hhmm(t)}</div>${filas || "<div>Sin stock</div>"}`;
     tip.style.left = Math.min(px + 12, W - tip.offsetWidth) + "px";
     tip.classList.add("on");
-  };
-  const ocultar = () => { cur.setAttribute("visibility", "hidden"); tip.classList.remove("on"); };
-  svg.addEventListener("pointermove", mover);
-  svg.addEventListener("pointerleave", ocultar);
+  });
 }
 
-function panelGrafico(prod, historial, ultima, inicioRegistro) {
-  const hace30 = ultima - 30 * 864e5;
-  const filas = historial.filter(h => h.producto === prod.nombre && aFecha(h.fecha) >= hace30);
+function datosGrafico(prod, historial, ultima) {
   const porTienda = {};
-  for (const h of filas) {
-    const t = tiendaDe(h.url), ts = aFecha(h.fecha), y = +h.precio;
-    const pts = (porTienda[t] ||= []);
-    const mismo = pts.find(p => p.t === ts);  // dos publicaciones de la misma tienda: la más barata
-    if (mismo) mismo.y = Math.min(mismo.y, y); else pts.push({t: ts, y});
+  for (const h of historial) {
+    if (h.producto !== prod.nombre || aFecha(h.fecha) < ultima - 30 * 864e5) continue;
+    const t = tiendaDe(h.url), ts = aFecha(h.fecha), pts = (porTienda[t] ||= []);
+    const mismo = pts.find(p => p.t === ts);
+    if (mismo) mismo.y = Math.min(mismo.y, +h.precio); else pts.push({t: ts, y: +h.precio});
   }
   const series = Object.entries(porTienda).map(([nombre, puntos]) => ({nombre, puntos: puntos.sort((a, b) => a.t - b.t)}))
     .sort((a, b) => a.puntos.at(-1).y - b.puntos.at(-1).y);
-  // un solo color: la tienda más barata hoy; el resto en gris
-  series.forEach((s, i) => s.color = i === 0 ? "var(--accent)" : i === 1 ? "var(--muted)" : "var(--control)");
-  const minimo = filas.reduce((m, h) => !m || +h.precio < +m.precio ? h : m, null);
-  const cab = `<div class="c-head"><span class="c-title">Precio con stock, últimos 30 días</span>
-    <span class="legend">${series.map(s => `<span><i style="background:${s.color}"></i>${esc(s.nombre)}</span>`).join("")}</span></div>`;
-  if (!series.length) {
-    return {html: `${cab}<div class="empty">Ninguna tienda lo tuvo con stock desde el ${ddmm(inicioRegistro)}, cuando empezó el registro. La línea aparece con el primer precio.</div>`};
-  }
-  return {html: `${cab}<div class="plot"></div>`, series, minimo,
-          desde: Math.min(...series.flatMap(s => s.puntos.map(p => p.t))), hasta: ultima};
+  series.forEach((s, i) => s.color = i === 0 ? "var(--accent)" : i === 1 ? "var(--muted)" : "var(--faint)");
+  return series.length ? {series, desde: Math.min(...series.flatMap(s => s.puntos.map(p => p.t))), hasta: ultima} : null;
 }
 
-let ultimaCarga = 0;
+/* ---------- Cuenta regresiva del Cyber Monday */
+function cuenta() {
+  const ahora = Date.now(), sec = $("#cyber");
+  if (ahora >= CYBER.fin) { sec.hidden = true; return; }
+  sec.hidden = false;
+  if (ahora >= CYBER.inicio) {
+    $("#cyber-titulo").textContent = "Cyber Monday, ahora";
+    $("#cyber-texto").textContent = "El monitor está revisando cada 15 minutos hasta el 4 de noviembre a la noche.";
+    $("#count").hidden = true;
+    return;
+  }
+  let r = Math.floor((CYBER.inicio - ahora) / 1000);
+  const d = Math.floor(r / 86400); r -= d * 86400;
+  const h = Math.floor(r / 3600); r -= h * 3600;
+  const m = Math.floor(r / 60), s = r - m * 60;
+  $("#c-d").textContent = d; $("#c-h").textContent = String(h).padStart(2, "0");
+  $("#c-m").textContent = String(m).padStart(2, "0"); $("#c-s").textContent = String(s).padStart(2, "0");
+}
+
+/* ---------- Entradas al hacer scroll */
+const observador = "IntersectionObserver" in window ? new IntersectionObserver(entradas => {
+  for (const e of entradas) if (e.isIntersecting) { e.target.classList.add("in"); observador.unobserve(e.target); }
+}, {rootMargin: "0px 0px -10% 0px"}) : null;
+function revelar(raiz) {
+  raiz.querySelectorAll("[data-reveal]:not(.in)").forEach(el => observador ? observador.observe(el) : el.classList.add("in"));
+}
+
 async function cargar() {
   const [config, estado, csv] = await Promise.all([traer("config.json", true), traer("state.json", true), traer("historial.csv", false)]);
   const historial = csv ? parseCSV(csv) : [];
-  const vistos = Object.values(estado).map(v => v.visto).filter(Boolean).map(aFecha);
-  const ultima = Math.max(...vistos);
-  const inicioRegistro = historial.length ? aFecha(historial[0].fecha) : ultima;
-  const ahora = Date.now();
-
+  const ultima = Math.max(...Object.values(estado).map(v => v.visto).filter(Boolean).map(aFecha));
   const resumenes = config.productos.map(prod => {
     const filas = tiendasDe(prod, estado, ultima);
     return {prod, filas, mejor: filas.find(f => f.estado === "disponible" && f.precio)};
@@ -416,62 +476,89 @@ async function cargar() {
   const comprable = resumenes.filter(r => r.mejor && r.mejor.precio <= r.prod.precio_max)
     .sort((a, b) => (a.prod.precio_max - a.mejor.precio) - (b.prod.precio_max - b.mejor.precio))[0];
 
-  let html = `<div class="title"><div><h1>Stock y precios</h1><p class="finding">${hallazgo(resumenes)}</p></div>
-    <div class="title-side">
-      <div class="stamp num">Última revisión ${ddmm(ultima)} ${hhmm(ultima)} (${hace(ahora - ultima)})<button type="button" id="refrescar">Actualizar</button></div>
-      ${comprable ? `<a class="btn" href="${esc(comprable.mejor.url)}" target="_blank" rel="noopener">Ver la ${esc(corto(comprable.prod.nombre))} en ${esc(comprable.mejor.tienda)}</a>` : ""}
-    </div></div>`;
+  const {titulo, lead} = frente(resumenes, comprable);
+  $("#titulo").innerHTML = titulo;
+  $("#lead").innerHTML = lead;
+  $("#hero-ctas").innerHTML = (comprable
+      ? `<a class="link" href="${esc(comprable.mejor.url)}" target="_blank" rel="noopener">Ver en ${esc(comprable.mejor.tienda)}</a>` : "")
+    + `<a class="link" href="#teles">Ver las tres teles</a>`;
 
-  html += `<div class="summary">${resumenes.map((r, i) => {
-    const conStock = r.filas.filter(f => f.estado === "disponible").length;
-    const valor = r.mejor ? `<div class="k-value num">${fmt(r.mejor.precio)}</div>` : `<div class="k-value none">Sin stock</div>`;
-    let sub;
-    if (r.mejor) {
-      const dif = r.prod.precio_max - r.mejor.precio;
-      sub = `${esc(r.mejor.tienda)} · ${dif >= 0 ? `<span class="pos num">${fmt(dif)} debajo del tope</span>` : `<span class="num">${fmt(-dif)} arriba del tope</span>`}`;
-    } else sub = `En ninguna de las ${r.filas.length} tiendas · tope <span class="num">${fmt(r.prod.precio_max)}</span>`;
-    return `<a href="#p${i}"><div class="k-label">${esc(r.prod.nombre)}</div>${valor}<div class="k-sub">${sub}${r.mejor && conStock > 1 ? ` · ${conStock} tiendas con stock` : ""}</div></a>`;
-  }).join("")}</div>`;
-  const cyber = cyberTexto(ahora);
-  if (cyber) html += `<p class="notice">${cyber}</p>`;
+  // las pantallas se encienden cuando hay stock
+  document.querySelectorAll("#showroom .tv").forEach((tv, i) => {
+    const r = resumenes[i];
+    if (!r) return;
+    tv.querySelector(".name").textContent = corto(r.prod.nombre);
+    tv.querySelector(".state").innerHTML = `<span class="led" aria-hidden="true"></span>${r.mejor ? `<span class="num">${fmt(r.mejor.precio)}</span>` : "Sin stock"}`;
+    setTimeout(() => tv.classList.toggle("on", !!r.mejor), 250 + i * 140);
+  });
+  // en el carrusel del celular, arrancar en la primera tele encendida
+  const sala = $("#showroom"), primera = resumenes.findIndex(r => r.mejor);
+  if (primera > 0 && sala.scrollWidth > sala.clientWidth) {
+    const tv = sala.children[primera];
+    const desplazar = tv.getBoundingClientRect().left - sala.getBoundingClientRect().left - parseFloat(getComputedStyle(sala).paddingLeft);
+    sala.scrollTo({left: sala.scrollLeft + desplazar, behavior: "instant"});
+  }
+
+  const tiendas = new Set(resumenes.flatMap(r => r.filas.map(f => f.tienda)));
+  $("#statement").textContent = `Reviso ${tiendas.size} tiendas cada hora, de Mercado Libre a Cetrogar, y te escribo por Telegram apenas una de estas teles vuelve a tener stock o baja de precio.`;
 
   const graficos = [];
-  resumenes.forEach((r, i) => {
-    const g = panelGrafico(r.prod, historial, ultima, inicioRegistro);
+  $("#teles").innerHTML = resumenes.map((r, i) => {
+    const [foto, w, h] = FOTOS[r.prod.codigo] || [];
+    const g = datosGrafico(r.prod, historial, ultima);
     graficos.push(g);
-    const minTxt = g.minimo ? ` · mínimo en 30 días <span class="num">${fmt(+g.minimo.precio)}</span> en ${esc(tiendaDe(g.minimo.url))} el ${ddmm(aFecha(g.minimo.fecha))}` : "";
-    html += `<section class="product" id="p${i}" aria-labelledby="h${i}">
-      <div class="p-head"><h2 id="h${i}">${esc(r.prod.nombre)}</h2><span class="p-meta">Tope <span class="num">${fmt(r.prod.precio_max)}</span>${minTxt}</span></div>
-      <div class="p-grid">
-        <div class="panel"><table><thead><tr><th>Tienda</th><th>Estado</th><th class="r">Precio</th></tr></thead>
-          <tbody>${r.filas.map(f => filaTienda(f, r.prod)).join("")}</tbody></table></div>
-        <div class="panel chart-panel">${g.html}</div>
+    const dif = r.mejor ? r.prod.precio_max - r.mejor.precio : 0;
+    const veredicto = r.mejor
+      ? `En ${esc(r.mejor.tienda)} · ${dif >= 0 ? `<span class="pos num">${fmt(dif)} debajo de tu tope</span>` : `<span class="num">${fmt(-dif)} arriba de tu tope</span>`}`
+      : `Ninguna de las ${r.filas.length} tiendas la tiene. Tu tope es <span class="num">${fmt(r.prod.precio_max)}</span>.`;
+    const historia = g ? `<div class="plot"></div>`
+      : `<p class="quiet">Ninguna tienda la tuvo con stock desde que empezó el registro. La línea de precios aparece con el primer precio.</p>`;
+    return `<section class="chapter wrap ${i % 2 ? "flip" : ""}" id="tele-${i}" aria-labelledby="t${i}">
+      <div class="chapter-grid">
+        <div class="stage ${r.mejor ? "" : "off"}" data-reveal>
+          ${foto ? `<img src="${foto}" alt="${esc(r.prod.nombre)}" width="${w}" height="${h}" loading="lazy">` : ""}
+          <span class="tag">${r.mejor ? "Encendida: hay stock" : "Apagada: sin stock"}</span>
+        </div>
+        <div class="info">
+          <h2 id="t${i}" data-reveal>${esc(corto(r.prod.nombre))}</h2>
+          <p class="kind" data-reveal style="--i:1">${tipo(r.prod.nombre)}</p>
+          <p class="price num ${r.mejor ? "" : "none"}" data-reveal style="--i:2">${r.mejor ? fmt(r.mejor.precio) : "Sin stock"}</p>
+          <p class="verdict" data-reveal style="--i:3">${veredicto}</p>
+          ${r.mejor ? `<div class="ctas" data-reveal style="--i:4"><a class="link" href="${esc(r.mejor.url)}" target="_blank" rel="noopener">Ir a ${esc(r.mejor.tienda)}</a></div>` : ""}
+          <div class="stores" data-reveal style="--i:4"><h3>Tiendas</h3>${r.filas.map(f => filaTienda(f, r.prod)).join("")}</div>
+          <div class="history" data-reveal style="--i:5"><h3>Precio con stock, últimos 30 días</h3>${historia}</div>
+        </div>
       </div></section>`;
-  });
+  }).join("");
 
-  $("#app").innerHTML = html;
-  $("#refrescar").addEventListener("click", refrescar);
-  document.querySelectorAll(".product").forEach((sec, i) => {
+  document.querySelectorAll(".chapter").forEach((sec, i) => {
     const g = graficos[i], plot = sec.querySelector(".plot");
-    if (!plot) return;
+    if (!g || !plot) return;
     const pintar = () => dibujar(plot, g.series, resumenes[i].prod.precio_max, g.desde, g.hasta);
     pintar();
     new ResizeObserver(pintar).observe(plot);
   });
-  ultimaCarga = ahora;
+  revelar(document);
+
+  $("#stamp").innerHTML = `Última revisión ${ddmm(ultima)} a las ${hhmm(ultima)}. <button type="button" id="refrescar">Actualizar</button>`;
+  $("#refrescar").addEventListener("click", iniciar);
 }
 
-async function refrescar() {
-  const b = $("#refrescar");
-  if (b) { b.textContent = "Actualizando…"; b.disabled = true; }
+async function iniciar() {
   try { await cargar(); }
   catch (e) {
-    const p = $(".finding");
-    if (ultimaCarga && b) { b.textContent = "No se pudo actualizar, reintentar"; b.disabled = false; return; }
-    if (p) p.innerHTML = `No pude leer los datos del monitor (${esc(e.message)}). <button type="button" onclick="refrescar()" style="font:inherit;background:none;border:0;padding:0;text-decoration:underline;cursor:pointer;color:inherit">Reintentar</button>`;
+    $("#titulo").textContent = "No pude leer los datos.";
+    $("#lead").innerHTML = `${esc(e.message)}. <button type="button" onclick="iniciar()" style="font:inherit;color:inherit;background:none;border:0;padding:0;text-decoration:underline;cursor:pointer">Reintentar</button>`;
   }
 }
-refrescar();
+
+const barra = $("#bar"), hero = $(".hero");
+const ajustarBarra = () => barra.classList.toggle("solid", hero.getBoundingClientRect().bottom < 68);
+addEventListener("scroll", ajustarBarra, {passive: true});
+ajustarBarra();
+cuenta(); setInterval(cuenta, 1000);
+revelar(document);
+iniciar();
 </script>
 </body>
 </html>
