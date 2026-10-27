@@ -28,7 +28,9 @@ SALUD = BASE / "salud.json"
 REPO_NOMBRE = "monitor-teles"
 ARCHIVOS = ["monitor.py", "nube.py", "config.json", "requirements.txt", "LEEME.md", "index.html",
             "logo_monitor.png", ".github/workflows/monitor.yml",
-            "img/lg-oled-b5.webp", "img/tcl-c6k.webp", "img/tcl-c755.webp"]
+            "img/lg-oled-b5.webp", "img/tcl-c6k.webp", "img/tcl-c755.webp", "manifest.webmanifest",
+            "img/icon-192.png", "img/icon-512.png", "img/icon-maskable-512.png", "img/apple-touch-icon.png",
+            "img/favicon-32.png"]
 DIAS_AVISO_TOKEN = 14
 
 
