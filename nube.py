@@ -3,9 +3,11 @@
 Uso (en tu PC):
   python nube.py publicar     crea el repo, sube los archivos, carga los secretos y lo corre una vez
   python nube.py actualizar   vuelve a subir los archivos (después de cambiar config.json o el código)
+  python nube.py token        reemplaza el token de GitHub cuando está por vencer
 
 Uso interno (lo corre GitHub Actions):
   python nube.py guardar-refresh   guarda el refresh token nuevo de Mercado Libre como secreto
+  python nube.py aviso-corrida     avisa por Telegram si la nube empezó a fallar o si el token vence pronto
 """
 import base64
 import json
@@ -13,16 +15,20 @@ import os
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 
 from nacl import encoding, public
 
 BASE = Path(__file__).resolve().parent
 SECRETS = BASE / "secrets.json"
+SALUD = BASE / "salud.json"
 REPO_NOMBRE = "monitor-teles"
-ARCHIVOS = ["monitor.py", "nube.py", "config.json", "requirements.txt", "LEEME.md",
+ARCHIVOS = ["monitor.py", "nube.py", "config.json", "requirements.txt", "LEEME.md", "index.html",
             "logo_monitor.png", ".github/workflows/monitor.yml"]
+DIAS_AVISO_TOKEN = 14
 
 
 def gh(metodo, ruta, token, datos=None):
@@ -105,9 +111,61 @@ def publicar():
 
 def actualizar():
     token = pedir_token()
-    repo = f"{gh('GET', '/user', token)['login']}/{REPO_NOMBRE}"
+    usuario = gh('GET', '/user', token)['login']
+    repo = f"{usuario}/{REPO_NOMBRE}"
     subir_archivos(token, repo)
     print("Archivos actualizados.")
+    if not gh("GET", f"/repos/{repo}/pages", token):
+        # página pública con el gráfico de precios (index.html)
+        gh("POST", f"/repos/{repo}/pages", token, {"source": {"branch": "main", "path": "/"}})
+        print(f"Gráfico activado: https://{usuario}.github.io/{REPO_NOMBRE}/ (tarda unos minutos la primera vez)")
+
+
+def token_nuevo():
+    sec = leer_secretos()
+    sec.pop("gh_pat", None)
+    SECRETS.write_text(json.dumps(sec, ensure_ascii=False, indent=2), encoding="utf-8")
+    token = pedir_token()
+    repo = f"{gh('GET', '/user', token)['login']}/{REPO_NOMBRE}"
+    poner_secreto(token, repo, "GH_PAT", token)
+    print("Token de GitHub reemplazado en tu PC y en la nube.")
+
+
+def telegram(texto):
+    sec = leer_secretos()
+    datos = urllib.parse.urlencode({"chat_id": sec["chat_id"], "text": texto, "parse_mode": "HTML",
+                                    "disable_web_page_preview": "true"}).encode()
+    urllib.request.urlopen(f"https://api.telegram.org/bot{sec['token']}/sendMessage", data=datos, timeout=20)
+
+
+def aviso_corrida():
+    repo, pat, resultado = os.environ["REPO"], os.environ["GH_PAT"], os.environ["RESULTADO"]
+    # solo avisa en el cambio (anduvo -> falló, o falló -> anduvo), no en cada corrida
+    runs = gh("GET", f"/repos/{repo}/actions/workflows/monitor.yml/runs?status=completed&per_page=1",
+              pat)["workflow_runs"]
+    anterior = runs[0]["conclusion"] if runs else "success"
+    if resultado == "failure" and anterior != "failure":
+        telegram(f"🔧 El monitor falló en la nube. Detalle: "
+                 f"https://github.com/{repo}/actions/runs/{os.environ['RUN_ID']}")
+    elif resultado == "success" and anterior == "failure":
+        telegram("✅ El monitor volvió a andar en la nube.")
+
+    # si el token de GitHub vence, deja de guardarse el permiso de Mercado Libre y todo se cae
+    req = urllib.request.Request("https://api.github.com/user", headers={"Authorization": f"Bearer {pat}"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        vence = r.headers.get("github-authentication-token-expiration")
+    if not vence:
+        return
+    fecha = datetime.strptime(vence[:19], "%Y-%m-%d %H:%M:%S")
+    dias = (fecha - datetime.now(timezone.utc).replace(tzinfo=None)).days
+    salud = json.loads(SALUD.read_text(encoding="utf-8")) if SALUD.exists() else {}
+    hoy = f"{datetime.now(timezone.utc):%Y-%m-%d}"
+    if dias <= DIAS_AVISO_TOKEN and salud.get("_aviso_token") != hoy:
+        telegram(f"🔑 El token de GitHub del monitor vence en {dias} días ({fecha:%d/%m}).\n"
+                 "1. Creá uno nuevo en github.com/settings/tokens (classic, permisos repo + workflow).\n"
+                 "2. En tu PC corré: python nube.py token")
+        salud["_aviso_token"] = hoy
+        SALUD.write_text(json.dumps(salud, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def guardar_refresh():
@@ -121,4 +179,5 @@ def guardar_refresh():
 
 
 if __name__ == "__main__":
-    {"publicar": publicar, "actualizar": actualizar, "guardar-refresh": guardar_refresh}[sys.argv[1]]()
+    {"publicar": publicar, "actualizar": actualizar, "token": token_nuevo, "guardar-refresh": guardar_refresh,
+     "aviso-corrida": aviso_corrida}[sys.argv[1]]()
