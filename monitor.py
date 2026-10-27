@@ -8,6 +8,7 @@ Uso:
   python monitor.py --test          manda un mensaje de prueba a Telegram
   python monitor.py --mercadolibre APP_ID   conecta la API oficial de Mercado Libre
 """
+import base64
 import csv
 import html
 import json
@@ -107,6 +108,72 @@ def enviar_telegram(texto):
     telegram_api(sec["token"], "sendMessage", {
         "chat_id": sec["chat_id"], "text": texto, "parse_mode": "HTML",
         "disable_web_page_preview": "true"})
+
+
+# ---------------------------------------------------------------- Avisos en el celular (web push)
+
+PAGINA = "https://nachomit02.github.io/monitor-teles/"
+
+
+def enviar_push(titulo, cuerpo, url=PAGINA, tag=None, solo=None):
+    """Manda una notificación a cada celular registrado; borra los que ya no existen."""
+    sec = leer_json(SECRETS, {})
+    subs = [solo] if solo else sec.get("push_subs", [])
+    if not subs or not sec.get("vapid_private"):
+        return
+    from pywebpush import WebPushException, webpush
+    datos = json.dumps({"titulo": titulo, "cuerpo": cuerpo, "url": url, "tag": tag})
+    vencidas = []
+    for sub in subs:
+        try:
+            webpush(subscription_info=sub, data=datos, vapid_private_key=sec["vapid_private"],
+                    vapid_claims={"sub": "https://nachomit02.github.io"}, ttl=12 * 3600)
+        except WebPushException as e:
+            codigo = e.response.status_code if e.response is not None else None
+            log(f"push falló ({codigo}): {str(e)[:120]}")
+            if codigo in (404, 410):  # el celular desactivó los avisos o desinstaló la app
+                vencidas.append(sub["endpoint"])
+    if vencidas:
+        sec["push_subs"] = [s for s in sec.get("push_subs", []) if s["endpoint"] not in vencidas]
+        guardar_json(SECRETS, sec)
+        log(f"{len(vencidas)} celulares dados de baja")
+
+
+def registrar_celulares():
+    """Lee los mensajes del bot: un 'push:...' es el código que genera la página para activar avisos."""
+    sec = leer_json(SECRETS, {})
+    if not sec.get("token") or not sec.get("vapid_private"):
+        return
+    updates = telegram_api(sec["token"], "getUpdates", {"timeout": 0}).get("result", [])
+    if not updates:
+        return
+    nuevos = 0
+    for u in updates:
+        msg = u.get("message") or {}
+        texto = (msg.get("text") or "").strip()
+        # solo se aceptan códigos desde tu chat: nadie más puede anotar un celular
+        if str(msg.get("chat", {}).get("id")) != str(sec.get("chat_id")) or not texto.startswith("push:"):
+            continue
+        try:
+            crudo = texto[5:].strip()
+            sub = json.loads(base64.urlsafe_b64decode(crudo + "=" * (-len(crudo) % 4)).decode())
+            assert sub["endpoint"].startswith("https://") and sub["keys"]["p256dh"] and sub["keys"]["auth"]
+        except Exception:
+            enviar_telegram("⚠️ Ese código no es válido. Copialo de nuevo desde la app, completo.")
+            continue
+        sec = leer_json(SECRETS, {})
+        subs = [s for s in sec.get("push_subs", []) if s["endpoint"] != sub["endpoint"]]
+        sec["push_subs"] = subs + [{"endpoint": sub["endpoint"], "keys": sub["keys"]}]
+        guardar_json(SECRETS, sec)
+        nuevos += 1
+        enviar_push("Avisos activados", "Desde ahora te aviso acá cuando haya stock o baje un precio.",
+                    solo=sec["push_subs"][-1])
+    # confirma los mensajes leídos para no procesarlos de nuevo
+    telegram_api(sec["token"], "getUpdates", {"offset": updates[-1]["update_id"] + 1, "timeout": 0})
+    if nuevos:
+        enviar_telegram(f"📲 Listo: {nuevos} celular{'es' if nuevos > 1 else ''} registrado{'s' if nuevos > 1 else ''}. "
+                        "Te mandé una notificación de prueba.")
+        log(f"{nuevos} celulares registrados para avisos")
 
 
 def configurar_telegram(token=None):
@@ -425,6 +492,12 @@ def main(dry_run=False, con_resumen=False):
     historial = leer_historial()
     filas_historial = []
     avisos = []
+    avisos_push = []
+    if not dry_run:
+        try:
+            registrar_celulares()
+        except Exception as e:
+            log(f"ERROR registrando celulares: {str(e)[:150]}")
     revisadas = []
     visto = f"{ahora():%Y-%m-%d %H:%M}"
     # tienda -> None si anduvo en esta corrida, o el motivo de la falla
@@ -544,6 +617,8 @@ def main(dry_run=False, con_resumen=False):
                     grafico = f"\n📈 {config['grafico']}" if config.get("grafico") else ""
                     avisos.append(f"{motivo}: <b>{prod['nombre']}</b>\n{tienda}: {fmt(r['precio'])} {marca}"
                                   f"{contexto}\n{url}{grafico}")
+                    avisos_push.append((f"{'Hay stock' if volvio_stock else 'Bajó de precio'}: {prod['nombre']}",
+                                        f"{tienda}: {fmt(r['precio'])} {marca}{contexto}", url, prod["codigo"]))
         ctx.close()
     salud, avisos_salud = actualizar_salud(salud_corrida)
 
@@ -567,6 +642,11 @@ def main(dry_run=False, con_resumen=False):
         return
     for a in avisos + avisos_salud:
         enviar_telegram(a)
+    for titulo, cuerpo, url, tag in avisos_push:
+        try:
+            enviar_push(titulo, cuerpo, url, tag)
+        except Exception as e:
+            log(f"ERROR push: {str(e)[:150]}")
     if con_resumen:
         enviar_telegram(resumen({u: v for u, v in estado_nuevo.items() if u in revisadas}))
     guardar_json(STATE, estado_nuevo)
