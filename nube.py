@@ -27,7 +27,8 @@ SECRETS = BASE / "secrets.json"
 SALUD = BASE / "salud.json"
 REPO_NOMBRE = "monitor-teles"
 ARCHIVOS = ["monitor.py", "nube.py", "config.json", "requirements.txt", "LEEME.md", "index.html",
-            "logo_monitor.png", ".github/workflows/monitor.yml"]
+            "logo_monitor.png", ".github/workflows/monitor.yml",
+            "img/lg-oled-b5.webp", "img/tcl-c6k.webp", "img/tcl-c755.webp"]
 DIAS_AVISO_TOKEN = 14
 
 
