@@ -3,10 +3,15 @@ name: Monitor de teles
 on:
   schedule:
     - cron: "17 * * * *"   # cada hora (minuto 17, para esquivar la hora en punto que GitHub atrasa)
+    # Cyber Monday (2 al 4 de noviembre, hora argentina): suma los minutos 2, 32 y 47 -> cada 15 minutos.
+    # GitHub usa hora UTC (Argentina + 3): cubre desde el 1/11 21:00 hasta el 4/11 23:59 de Argentina.
+    - cron: "2,32,47 21-23 1 11 *"
+    - cron: "2,32,47 * 2-4 11 *"
+    - cron: "2,32,47 0-2 5 11 *"
   workflow_dispatch:         # botón "Run workflow" para correrlo a mano
 
 permissions:
-  contents: write            # para guardar state.json entre corridas
+  contents: write            # para guardar state.json, historial.csv y salud.json entre corridas
 
 concurrency:
   group: monitor
@@ -57,11 +62,21 @@ jobs:
           REPO: ${{ github.repository }}
         run: python nube.py guardar-refresh
 
+      - name: Avisar si el monitor se rompe o el token vence
+        if: always()
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RESULTADO: ${{ job.status }}
+        run: python nube.py aviso-corrida
+
       - name: Guardar estado
         if: always()
         run: |
           git config user.name "monitor-bot"
           git config user.email "monitor-bot@users.noreply.github.com"
-          git add state.json
+          for f in state.json historial.csv salud.json; do if [ -f "$f" ]; then git add "$f"; fi; done
           git diff --cached --quiet || git commit -m "estado $(date -u +%Y-%m-%dT%H:%M)"
+          git pull --rebase -q || true
           git push
