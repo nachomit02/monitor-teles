@@ -22,6 +22,9 @@ En PowerShell, en esta carpeta (`C:\Users\MititieriIgnacio\monitor_teles`):
 
 - `.\.venv\Scripts\python.exe nube.py actualizar` → sube los cambios de `config.json` o del código
 - `.\.venv\Scripts\python.exe nube.py token` → reemplaza el token de GitHub cuando está por vencer
+- `.\.venv\Scripts\python.exe nube.py activar-push` → (una sola vez) crea las claves de los avisos en el celular.
+  Después, en la app: "Activar avisos en este celular" → mandale el código al bot de Telegram.
+  En iPhone, los avisos solo funcionan con la app agregada a inicio.
 - `.\.venv\Scripts\python.exe monitor.py --mercadolibre APP_ID` y después `nube.py publicar`
   → reconecta Mercado Libre si se pierde el permiso
 
