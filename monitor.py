@@ -257,7 +257,20 @@ def links_de_busqueda(page, url, codigo):
     return encontrados[:5]
 
 
-def buscar_vtex(tienda, codigo):
+def vtex_entregable(tienda, sku, vendedor, codigo_postal):
+    """El catálogo puede decir "en stock" aunque el checkout no lo venda (le pasó a Cetrogar):
+    simula la compra y exige al menos un envío o retiro."""
+    cuerpo = json.dumps({"items": [{"id": sku, "quantity": 1, "seller": vendedor}],
+                         "postalCode": codigo_postal, "country": "ARG"}).encode()
+    req = urllib.request.Request(f"{tienda.rstrip('/')}/api/checkout/pub/orderForms/simulation", data=cuerpo,
+                                 headers={"User-Agent": "monitor-teles", "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        sim = json.loads(r.read().decode())
+    return any(it.get("availability") == "available" for it in sim.get("items", [])) and \
+        any(info.get("slas") for info in sim.get("logisticsInfo", []))
+
+
+def buscar_vtex(tienda, codigo, codigo_postal="1425"):
     """Tiendas hechas con VTEX (ej: Cetrogar) tienen un catálogo público en JSON: más confiable que leer la página."""
     url = f"{tienda.rstrip('/')}/api/catalog_system/pub/products/search?ft={urllib.parse.quote(codigo)}"
     req = urllib.request.Request(url, headers={"User-Agent": "monitor-teles"})
@@ -267,8 +280,10 @@ def buscar_vtex(tienda, codigo):
     for prod in productos:
         if normalizar(codigo) not in normalizar(prod.get("productName", "")):
             continue
-        ofertas = [s["commertialOffer"] for it in prod.get("items", []) for s in it.get("sellers", [])]
-        con_stock = [o for o in ofertas if o.get("AvailableQuantity", 0) > 0 and o.get("Price")]
+        ofertas = [(it["itemId"], s["sellerId"], s["commertialOffer"])
+                   for it in prod.get("items", []) for s in it.get("sellers", [])]
+        con_stock = [o for sku, vendedor, o in ofertas if o.get("AvailableQuantity", 0) > 0 and o.get("Price")
+                     and vtex_entregable(tienda, sku, vendedor, codigo_postal)]
         resultados.append({
             "url": prod["link"], "titulo": prod["productName"][:120],
             "estado": "disponible" if con_stock else "sin_stock",
@@ -549,7 +564,7 @@ def main(dry_run=False, con_resumen=False):
             ya_revisadas = {}
             for tienda in prod.get("vtex", []):
                 try:
-                    encontrados = buscar_vtex(tienda, prod["codigo"])
+                    encontrados = buscar_vtex(tienda, prod["codigo"], config.get("codigo_postal", "1425"))
                 except Exception as e:
                     log(f"ERROR catálogo {tienda}: {e}")
                     anotar(tienda_de(tienda), f"error en el catálogo: {str(e)[:150]}")
