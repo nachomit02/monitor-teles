@@ -1,8 +1,14 @@
 # Monitor de teles
 
-Corre en GitHub Actions (no necesita la PC prendida): revisa cada hora si hay stock de las teles de
-`config.json` y avisa por Telegram cuando un producto vuelve a tener stock o baja de precio.
-Del 2 al 4 de noviembre (Cyber Monday) revisa cada 15 minutos.
+Corre en GitHub Actions (no necesita la PC prendida): revisa cada 15 minutos si hay stock de las
+teles de `config.json` y avisa por Telegram y al celular cuando un producto vuelve a tener stock o
+baja de precio.
+
+GitHub saltea muchas corridas programadas (llegó a dejar 7 horas sin revisar), así que
+cron-job.org dispara el workflow cada 15 minutos (POST a la API `workflow_dispatch`, con un token
+fine-grained "cron-job" que solo tiene Actions: Read and write sobre este repo y vence al año).
+Las corridas programadas de GitHub quedan como respaldo. Si las revisiones vuelven a espaciarse,
+revisá ese cron en cron-job.org o renová el token.
 
 - Corridas y botón "Run workflow": https://github.com/nachomit02/monitor-teles/actions
 - Gráfico de precios: https://nachomit02.github.io/monitor-teles/
