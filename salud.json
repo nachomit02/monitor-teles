@@ -38,5 +38,10 @@
     "fallas": 0,
     "avisado": false,
     "motivo": null
+  },
+  "Fravega": {
+    "fallas": 1,
+    "avisado": false,
+    "motivo": "no reconozco la página (quedó 'no_existe'), quizás la cambiaron: https://www.fravega.com/p/smart-tv-mini-led-4k-uhd-55-tcl-55c6k-f-503079/"
   }
 }
